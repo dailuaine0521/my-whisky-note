@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#1b140f" />
+  <title>My Whisky Note</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-title">My Whisky Note</div>
+        <div class="brand-sub">좋은 위스키, 더 특별한 순간</div>
+      </div>
+
+      <nav class="side-nav">
+        <button class="nav-item active" data-view="home">⌂ <span>홈</span></button>
+        <button class="nav-item" data-view="collection">▣ <span>컬렉션</span></button>
+        <button class="nav-item" data-view="tasting">✎ <span>시음 노트</span></button>
+        <button class="nav-item" data-view="wishlist">♡ <span>위시리스트</span></button>
+        <button class="nav-item" data-view="ranking">♛ <span>랭킹</span></button>
+        <button class="nav-item" data-view="stats">▥ <span>통계</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="nav-item" data-view="settings">⚙ <span>설정</span></button>
+        <div class="quote-card">
+          <div class="quote-mark">“</div>
+          <p>좋은 위스키는<br/>시간을 기록하게 만든다.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="homeView" class="view active">
+        <div class="hero">
+          <div>
+            <div class="hero-kicker">MY PRIVATE WHISKY JOURNAL</div>
+            <h1>좋은 위스키는<br/>일상을 특별한 이야기로 만들어준다.</h1>
+            <p>내가 마신 순간과 취향을 한 곳에 기록하세요.</p>
+          </div>
+          <button id="openAddWhisky" class="primary-btn">+ 위스키 추가</button>
+        </div>
+
+        <section class="stat-grid" id="summaryCards"></section>
+
+        <section class="dashboard-grid">
+          <div class="panel collection-panel">
+            <div class="panel-head">
+              <div>
+                <h2>내 위스키 컬렉션</h2>
+                <p>보유 · 개봉 · 완병 · 위시리스트</p>
+              </div>
+              <div class="panel-actions">
+                <input id="searchInput" class="search" placeholder="위스키 이름, 증류소, 지역으로 검색…" />
+                <select id="sortSelect" class="select">
+                  <option value="recent">최신순</option>
+                  <option value="score">점수순</option>
+                  <option value="name">이름순</option>
+                  <option value="price">구매가순</option>
+                </select>
+              </div>
+            </div>
+            <div id="whiskyGrid" class="whisky-grid"></div>
+          </div>
+
+          <div class="right-column">
+            <div id="detailPanel" class="panel detail-panel"></div>
+
+            <div class="panel mini-panel">
+              <div class="mini-col">
+                <div class="section-title-row">
+                  <h3>최근 시음 노트</h3>
+                  <button class="text-btn" data-view-target="tasting">전체 보기 ›</button>
+                </div>
+                <div id="recentNotes"></div>
+              </div>
+              <div class="mini-col top-five">
+                <div class="section-title-row">
+                  <h3>TOP 5 위스키</h3>
+                  <button class="text-btn" data-view-target="ranking">전체 보기 ›</button>
+                </div>
+                <div id="topFive"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="collectionView" class="view">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">COLLECTION</div>
+            <h1>내 컬렉션</h1>
+            <p>보유 상태와 구매 정보를 한 번에 관리합니다.</p>
+          </div>
+          <button class="primary-btn" id="openAddWhisky2">+ 위스키 추가</button>
+        </div>
+        <div class="panel">
+          <div class="filter-row">
+            <div id="statusFilters" class="segmented">
+              <button class="active" data-filter="all">전체</button>
+              <button data-filter="보유">보유</button>
+              <button data-filter="개봉">개봉</button>
+              <button data-filter="완병">완병</button>
+              <button data-filter="위시리스트">위시리스트</button>
+            </div>
+          </div>
+          <div id="collectionGrid" class="whisky-grid large"></div>
+        </div>
+      </section>
+
+      <section id="tastingView" class="view">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">TASTING</div>
+            <h1>시음 노트</h1>
+            <p>같은 위스키도 시음 날짜별로 여러 번 기록할 수 있습니다.</p>
+          </div>
+          <button id="openAddTasting" class="primary-btn">+ 새 시음</button>
+        </div>
+        <div id="tastingList" class="tasting-list"></div>
+      </section>
+
+      <section id="wishlistView" class="view">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">WISHLIST</div>
+            <h1>위시리스트</h1>
+            <p>사고 싶은 위스키를 모아두고 가격을 기록하세요.</p>
+          </div>
+        </div>
+        <div id="wishlistGrid" class="whisky-grid large"></div>
+      </section>
+
+      <section id="rankingView" class="view">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">RANKING</div>
+            <h1>나의 위스키 랭킹</h1>
+            <p>평가한 점수를 기준으로 내 취향 순위를 확인합니다.</p>
+          </div>
+        </div>
+        <div id="rankingList" class="ranking-list panel"></div>
+      </section>
+
+      <section id="statsView" class="view">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">INSIGHTS</div>
+            <h1>취향 통계</h1>
+            <p>내 기록에서 반복되는 취향을 찾아봅니다.</p>
+          </div>
+        </div>
+        <div id="statsContent"></div>
+      </section>
+
+      <section id="settingsView" class="view">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">SETTINGS</div>
+            <h1>설정</h1>
+            <p>현재 V1은 브라우저에 자동 저장됩니다.</p>
+          </div>
+        </div>
+        <div class="panel settings-panel">
+          <h3>데이터 관리</h3>
+          <p class="muted">내보내기 파일을 보관하면 다른 브라우저에서도 복원할 수 있습니다.</p>
+          <div class="settings-actions">
+            <button id="exportData" class="secondary-btn">JSON 내보내기</button>
+            <label class="secondary-btn file-btn">JSON 가져오기<input id="importData" type="file" accept="application/json" hidden></label>
+            <button id="resetData" class="danger-btn">샘플 데이터로 초기화</button>
+          </div>
+          <div class="notice-box">
+            <b>다음 단계</b>
+            <p>Supabase 로그인/DB를 연결하면 휴대폰과 PC에서 같은 계정으로 실시간 동기화할 수 있습니다.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-nav">
+    <button class="active" data-view="home"><span>⌂</span>홈</button>
+    <button data-view="collection"><span>▣</span>컬렉션</button>
+    <button id="mobileQuickTasting" class="mobile-plus"><span>＋</span>시음</button>
+    <button data-view="ranking"><span>♛</span>랭킹</button>
+    <button data-view="settings"><span>⚙</span>설정</button>
+  </nav>
+
+  <div id="modalBackdrop" class="modal-backdrop">
+    <div class="modal" id="modalContent"></div>
+  </div>
+
+  <template id="whiskyFormTemplate">
+    <form id="whiskyForm">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">WHISKY</div>
+          <h2>위스키 추가</h2>
+        </div>
+        <button type="button" class="icon-btn" data-close>✕</button>
+      </div>
+
+      <div class="form-grid">
+        <label class="full">위스키 이름
+          <input name="name" required placeholder="예: Ardbeg Uigeadail" />
+        </label>
+        <label>한글 이름
+          <input name="nameKo" placeholder="예: 아드벡 우거다일" />
+        </label>
+        <label>증류소
+          <input name="distillery" placeholder="Ardbeg" />
+        </label>
+        <label>국가
+          <input name="country" value="Scotland" />
+        </label>
+        <label>지역
+          <input name="region" placeholder="Islay" />
+        </label>
+        <label>숙성연수
+          <input name="age" placeholder="12 / NAS" />
+        </label>
+        <label>도수 ABV
+          <input name="abv" type="number" step="0.1" placeholder="46" />
+        </label>
+        <label class="full">캐스크 타입
+          <input name="cask" placeholder="Bourbon, Sherry" />
+        </label>
+        <label>예상 가격
+          <input name="marketPrice" type="number" placeholder="150000" />
+        </label>
+        <label>내 구매 가격
+          <input name="purchasePrice" type="number" placeholder="135000" />
+        </label>
+        <label>구매일
+          <input name="purchaseDate" type="date" />
+        </label>
+        <label>상태
+          <select name="status">
+            <option>보유</option>
+            <option>개봉</option>
+            <option>완병</option>
+            <option>위시리스트</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="secondary-btn" data-close>취소</button>
+        <button class="primary-btn" type="submit">저장</button>
+      </div>
+    </form>
+  </template>
+
+  <template id="tastingFormTemplate">
+    <form id="tastingForm">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">TASTING NOTE</div>
+          <h2>시음 노트 작성</h2>
+        </div>
+        <button type="button" class="icon-btn" data-close>✕</button>
+      </div>
+
+      <label class="full">위스키
+        <select id="tastingWhiskySelect" name="whiskyId" required></select>
+      </label>
+
+      <div class="score-highlight">
+        <div>
+          <span>종합 점수</span>
+          <strong id="overallPreview">90</strong><small>/100</small>
+        </div>
+        <input id="overallRange" name="overall" type="range" min="50" max="100" value="90" />
+      </div>
+
+      <div class="rating-grid">
+        <label>향 <input name="nose" type="number" min="0" max="100" value="90"></label>
+        <label>맛 <input name="palate" type="number" min="0" max="100" value="90"></label>
+        <label>피니시 <input name="finish" type="number" min="0" max="100" value="90"></label>
+        <label>밸런스 <input name="balance" type="number" min="0" max="100" value="90"></label>
+      </div>
+
+      <div class="form-grid">
+        <label class="full">향
+          <textarea name="noseNote" rows="2" placeholder="강렬한 피트, 셰리, 시트러스…"></textarea>
+        </label>
+        <label class="full">맛
+          <textarea name="palateNote" rows="2" placeholder="묵직한 바디, 스파이스, 과일…"></textarea>
+        </label>
+        <label class="full">피니시
+          <textarea name="finishNote" rows="2" placeholder="길고 따뜻한 여운…"></textarea>
+        </label>
+        <label class="full">총평
+          <textarea name="overallNote" rows="3" placeholder="다시 찾게 되는 매력적인 위스키…"></textarea>
+        </label>
+        <label class="full">태그
+          <input name="tags" placeholder="스모키, 셰리, 다크초콜릿, 바닐라" />
+        </label>
+        <label>시음일
+          <input name="date" type="date" />
+        </label>
+        <label>가성비
+          <select name="value">
+            <option value="5">★★★★★</option>
+            <option value="4" selected>★★★★☆</option>
+            <option value="3">★★★☆☆</option>
+            <option value="2">★★☆☆☆</option>
+            <option value="1">★☆☆☆☆</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="secondary-btn" data-close>취소</button>
+        <button class="primary-btn" type="submit">시음 저장</button>
+      </div>
+    </form>
+  </template>
+
+  <script src="./app.js"></script>
+</body>
+</html>
