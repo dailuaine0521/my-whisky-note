@@ -58,21 +58,21 @@ function summary(){
   ]
 }
 function renderSummary(){
-  $("#summaryCards").innerHTML = summary().map(([icon,label,val,unit])=>\`
-    <div class="stat-card"><div class="stat-label">\${icon} &nbsp;\${label}</div><div class="stat-value">\${val} <small>\${unit}</small></div></div>
-  \`).join("");
+  $("#summaryCards").innerHTML = summary().map(([icon,label,val,unit])=>`
+    <div class="stat-card"><div class="stat-label">${icon} &nbsp;${label}</div><div class="stat-value">${val} <small>${unit}</small></div></div>
+  `).join("");
 }
 function cardHTML(w){
   const score = whiskyScore(w.id);
-  return \`<article class="whisky-card \${selectedWhiskyId===w.id?"active":""}" data-whisky="\${w.id}">
-    <div class="bottle-visual"><div class="bottle-shape \${bottleClass(w)}"></div></div>
+  return `<article class="whisky-card ${selectedWhiskyId===w.id?"active":""}" data-whisky="${w.id}">
+    <div class="bottle-visual"><div class="bottle-shape ${bottleClass(w)}"></div></div>
     <div class="card-body">
-      <div class="card-name">\${w.name}</div>
-      <div class="card-sub">\${w.nameKo||""}</div>
-      <div class="card-sub">\${w.country||""}\${w.region?" · "+w.region:""}</div>
-      <div class="card-meta"><span class="status-dot">\${w.status}</span><span class="score"><span class="star">★</span> \${score ?? "-"}</span></div>
+      <div class="card-name">${w.name}</div>
+      <div class="card-sub">${w.nameKo||""}</div>
+      <div class="card-sub">${w.country||""}${w.region?" · "+w.region:""}</div>
+      <div class="card-meta"><span class="status-dot">${w.status}</span><span class="score"><span class="star">★</span> ${score ?? "-"}</span></div>
     </div>
-  </article>\`;
+  </article>`;
 }
 function filteredWhiskies(){
   const q = ($("#searchInput")?.value || "").trim().toLowerCase();
@@ -86,96 +86,96 @@ function filteredWhiskies(){
 }
 function renderGrid(){
   const arr = filteredWhiskies();
-  $("#whiskyGrid").innerHTML = arr.length ? arr.map(cardHTML).join("") : \`<div class="empty">검색 결과가 없습니다.</div>\`;
+  $("#whiskyGrid").innerHTML = arr.length ? arr.map(cardHTML).join("") : `<div class="empty">검색 결과가 없습니다.</div>`;
 }
-function infoRow(label,value){return \`<div class="info-row"><span>\${label}</span><span>\${value||"-"}</span></div>\`}
+function infoRow(label,value){return `<div class="info-row"><span>${label}</span><span>${value||"-"}</span></div>`}
 function renderDetail(){
   const w = data.whiskies.find(x=>x.id===selectedWhiskyId) || data.whiskies[0];
-  if(!w){$("#detailPanel").innerHTML=\`<div class="empty">위스키를 추가해 주세요.</div>\`;return}
+  if(!w){$("#detailPanel").innerHTML=`<div class="empty">위스키를 추가해 주세요.</div>`;return}
   selectedWhiskyId = w.id;
   const t = whiskyLatestTasting(w.id);
   const score = whiskyScore(w.id);
   const ratings = t ? [["향",t.nose],["맛",t.palate],["피니시",t.finish],["밸런스",t.balance],["총평",t.overall]] : [["향","-"],["맛","-"],["피니시","-"],["밸런스","-"],["총평","-"]];
-  $("#detailPanel").innerHTML = \`
+  $("#detailPanel").innerHTML = `
     <div class="detail-top">
-      <div class="detail-bottle"><div class="bottle-shape \${bottleClass(w)}"></div></div>
+      <div class="detail-bottle"><div class="bottle-shape ${bottleClass(w)}"></div></div>
       <div>
         <div class="detail-title-row">
           <div>
-            <h2 class="detail-title">\${w.name}</h2>
-            <div class="card-sub">\${w.nameKo||""}</div>
+            <h2 class="detail-title">${w.name}</h2>
+            <div class="card-sub">${w.nameKo||""}</div>
           </div>
-          <div class="detail-score"><span class="star">★</span> \${score ?? "-"} <small>/100</small></div>
+          <div class="detail-score"><span class="star">★</span> ${score ?? "-"} <small>/100</small></div>
         </div>
-        <div class="pills"><span class="pill">\${w.status}</span><span class="pill gold">\${w.age||"NAS"}</span></div>
+        <div class="pills"><span class="pill">${w.status}</span><span class="pill gold">${w.age||"NAS"}</span></div>
         <div class="info-table">
-          \${infoRow("증류소",w.distillery)}
-          \${infoRow("지역",[w.country,w.region].filter(Boolean).join(" · "))}
-          \${infoRow("숙성연수",w.age)}
-          \${infoRow("도수",w.abv ? w.abv+"%" : "-")}
-          \${infoRow("캐스크",w.cask)}
-          \${infoRow("예상 가격",won(w.marketPrice))}
-          \${infoRow("구매 가격",won(w.purchasePrice))}
-          \${infoRow("구매일",w.purchaseDate)}
+          ${infoRow("증류소",w.distillery)}
+          ${infoRow("지역",[w.country,w.region].filter(Boolean).join(" · "))}
+          ${infoRow("숙성연수",w.age)}
+          ${infoRow("도수",w.abv ? w.abv+"%" : "-")}
+          ${infoRow("캐스크",w.cask)}
+          ${infoRow("예상 가격",won(w.marketPrice))}
+          ${infoRow("구매 가격",won(w.purchasePrice))}
+          ${infoRow("구매일",w.purchaseDate)}
         </div>
       </div>
     </div>
     <div class="rating-strip">
       <div class="section-title-row"><h3>평가 점수</h3><button class="text-btn" id="quickTasting">✎ 시음 추가</button></div>
       <div class="rating-circles">
-        \${ratings.map(([k,v])=>\`<div class="rating-item"><div class="rating-circle">\${v}</div><div>\${k}</div></div>\`).join("")}
+        ${ratings.map(([k,v])=>`<div class="rating-item"><div class="rating-circle">${v}</div><div>${k}</div></div>`).join("")}
       </div>
-    </div>\`;
+    </div>`;
   $("#quickTasting")?.addEventListener("click",()=>openTastingModal(w.id));
 }
 function renderRecent(){
   const arr = [...data.tastings].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,2);
   $("#recentNotes").innerHTML = arr.map(t=>{
     const w=data.whiskies.find(x=>x.id===t.whiskyId);
-    return \`<div class="note-mini"><div class="note-mini-top"><span>\${t.date} · \${w?.name||""}</span><b>★ \${t.overall}</b></div><p>\${t.overallNote||"-"}</p></div>\`
-  }).join("") || \`<div class="empty">아직 시음 기록이 없습니다.</div>\`;
+    return `<div class="note-mini"><div class="note-mini-top"><span>${t.date} · ${w?.name||""}</span><b>★ ${t.overall}</b></div><p>${t.overallNote||"-"}</p></div>`
+  }).join("") || `<div class="empty">아직 시음 기록이 없습니다.</div>`;
 }
 function renderTopFive(){
   const ranked=data.whiskies.map(w=>({...w,score:whiskyScore(w.id)})).filter(w=>w.score!==null).sort((a,b)=>b.score-a.score).slice(0,5);
-  $("#topFive").innerHTML=ranked.map((w,i)=>\`<div class="top-row"><span class="rank-num">\${i+1}</span><span>\${w.name}</span><b>★ \${w.score}</b></div>\`).join("");
+  $("#topFive").innerHTML=ranked.map((w,i)=>`<div class="top-row"><span class="rank-num">${i+1}</span><span>${w.name}</span><b>★ ${w.score}</b></div>`).join("");
 }
 function renderCollection(){
   let arr = data.whiskies;
   if(collectionFilter!=="all") arr=arr.filter(w=>w.status===collectionFilter);
-  $("#collectionGrid").innerHTML = arr.length?arr.map(cardHTML).join(""):\`<div class="empty">해당 상태의 위스키가 없습니다.</div>\`;
+  $("#collectionGrid").innerHTML = arr.length?arr.map(cardHTML).join(""):`<div class="empty">해당 상태의 위스키가 없습니다.</div>`;
 }
 function renderTastings(){
   const arr=[...data.tastings].sort((a,b)=>b.date.localeCompare(a.date));
   $("#tastingList").innerHTML=arr.map(t=>{
     const w=data.whiskies.find(x=>x.id===t.whiskyId);
-    return \`<article class="tasting-card">
+    return `<article class="tasting-card">
       <div>
-        <div class="tasting-title">\${w?.name||"Unknown"}</div>
-        <div class="tasting-meta">\${t.date} · 가성비 \${"★".repeat(Number(t.value||0))}</div>
+        <div class="tasting-title">${w?.name||"Unknown"}</div>
+        <div class="tasting-meta">${t.date} · 가성비 ${"★".repeat(Number(t.value||0))}</div>
         <div class="note-columns">
-          <div class="note-box"><b>향 \${t.nose}</b><p>\${t.noseNote||"-"}</p></div>
-          <div class="note-box"><b>맛 \${t.palate}</b><p>\${t.palateNote||"-"}</p></div>
-          <div class="note-box"><b>피니시 \${t.finish}</b><p>\${t.finishNote||"-"}</p></div>
-          <div class="note-box"><b>총평</b><p>\${t.overallNote||"-"}</p></div>
+          <div class="note-box"><b>향 ${t.nose}</b><p>${t.noseNote||"-"}</p></div>
+          <div class="note-box"><b>맛 ${t.palate}</b><p>${t.palateNote||"-"}</p></div>
+          <div class="note-box"><b>피니시 ${t.finish}</b><p>${t.finishNote||"-"}</p></div>
+          <div class="note-box"><b>총평</b><p>${t.overallNote||"-"}</p></div>
         </div>
-        <div class="pills">\${(t.tags||[]).map(x=>\`<span class="pill gold">\${x}</span>\`).join("")}</div>
+        <div class="pills">${(t.tags||[]).map(x=>`<span class="pill gold">${x}</span>`).join("")}</div>
       </div>
-      <div class="score-badge">\${t.overall}<small>/100</small></div>
-    </article>\`;
-  }).join("") || \`<div class="empty panel">시음 기록이 없습니다.</div>\`;
+      <div class="score-badge">${t.overall}<small>/100</small></div>
+    </article>`;
+  }).join("") || `<div class="empty panel">시음 기록이 없습니다.</div>`;
 }
 function renderWishlist(){
   const arr=data.whiskies.filter(w=>w.status==="위시리스트");
-  $("#wishlistGrid").innerHTML=arr.length?arr.map(cardHTML).join(""):\`<div class="empty">위시리스트가 비어 있습니다.</div>\`;
+  $("#wishlistGrid").innerHTML=arr.length?arr.map(cardHTML).join(""):`<div class="empty">위시리스트가 비어 있습니다.</div>`;
 }
 function renderRanking(){
   const arr=data.whiskies.map(w=>({...w,score:whiskyScore(w.id)})).filter(w=>w.score!==null).sort((a,b)=>b.score-a.score);
-  $("#rankingList").innerHTML=arr.map((w,i)=>\`<div class="ranking-row">
-    <div class="rank-big">\${i+1}</div>
-    <div><div class="r-name">\${w.name}</div><div class="r-sub">\${w.distillery} · \${w.region||w.country||""}</div></div>
-    <div class="r-sub">\${w.cask||"-"}</div>
-    <div class="r-score">\${w.score}</div>
-  </div>\`).join("") || \`<div class="empty">평가된 위스키가 없습니다.</div>\`;
+  $("#rankingList").innerHTML=arr.map((w,i)=>`<div class="ranking-row">
+    <div class="rank-big">${i+1}</div>
+    <div><div class="r-name">${w.name}</div><div class="r-sub">${w.distillery} · ${w.region||w.country||""}</div></div>
+    <div class="r-sub">${w.cask||"-"}</div>
+    <div class="r-score">${w.score}</div>
+  </div>`).join("") || `<div class="empty">평가된 위스키가 없습니다.</div>`;
 }
 function renderStats(){
   const scored=data.whiskies.map(w=>({w,score:whiskyScore(w.id)})).filter(x=>x.score!==null);
@@ -186,21 +186,21 @@ function renderStats(){
   const tags=Object.entries(tagCount).sort((a,b)=>b[1]-a[1]).slice(0,7);
   const avg = scored.length?Math.round(scored.reduce((a,b)=>a+b.score,0)/scored.length):0;
   const spend = data.whiskies.filter(w=>w.status!=="위시리스트").reduce((a,b)=>a+(Number(b.purchasePrice)||0),0);
-  $("#statsContent").innerHTML=\`
+  $("#statsContent").innerHTML=`
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">평가 평균</div><div class="stat-value">\${avg}<small>/100</small></div></div>
-      <div class="stat-card"><div class="stat-label">총 구매금액</div><div class="stat-value">\${new Intl.NumberFormat("ko-KR",{notation:"compact"}).format(spend)}<small>원</small></div></div>
-      <div class="stat-card"><div class="stat-label">시음 기록</div><div class="stat-value">\${data.tastings.length}<small>회</small></div></div>
-      <div class="stat-card"><div class="stat-label">등록 위스키</div><div class="stat-value">\${data.whiskies.length}<small>병</small></div></div>
+      <div class="stat-card"><div class="stat-label">평가 평균</div><div class="stat-value">${avg}<small>/100</small></div></div>
+      <div class="stat-card"><div class="stat-label">총 구매금액</div><div class="stat-value">${new Intl.NumberFormat("ko-KR",{notation:"compact"}).format(spend)}<small>원</small></div></div>
+      <div class="stat-card"><div class="stat-label">시음 기록</div><div class="stat-value">${data.tastings.length}<small>회</small></div></div>
+      <div class="stat-card"><div class="stat-label">등록 위스키</div><div class="stat-value">${data.whiskies.length}<small>병</small></div></div>
     </div>
     <div class="stats-grid">
       <div class="panel stats-card" style="grid-column:span 2"><h3>지역별 평균 점수</h3>
-        \${regionRows.map(([k,score,count])=>\`<div class="bar-row"><span>\${k}</span><div class="bar-track"><div class="bar-fill" style="width:\${score}%"></div></div><b>\${score}</b></div>\`).join("")}
+        ${regionRows.map(([k,score,count])=>`<div class="bar-row"><span>${k}</span><div class="bar-track"><div class="bar-fill" style="width:${score}%"></div></div><b>${score}</b></div>`).join("")}
       </div>
       <div class="panel stats-card"><h3>자주 쓴 향미 태그</h3>
-        \${tags.map(([k,v])=>\`<div class="top-row"><span>\${k}</span><b>\${v}회</b></div>\`).join("")||"<div class='empty'>태그 없음</div>"}
+        ${tags.map(([k,v])=>`<div class="top-row"><span>${k}</span><b>${v}회</b></div>`).join("")||"<div class='empty'>태그 없음</div>"}
       </div>
-    </div>\`;
+    </div>`;
 }
 
 function renderAll(){
@@ -257,7 +257,7 @@ function openTastingModal(preselect=selectedWhiskyId){
   const tpl=$("#tastingFormTemplate").content.cloneNode(true);
   modalContent.innerHTML="";modalContent.append(tpl);modalBackdrop.classList.add("open");
   const form=$("#tastingForm"), select=$("#tastingWhiskySelect");
-  select.innerHTML=data.whiskies.map(w=>\`<option value="\${w.id}">\${w.name} \${w.nameKo?"· "+w.nameKo:""}</option>\`).join("");
+  select.innerHTML=data.whiskies.map(w=>`<option value="${w.id}">${w.name} ${w.nameKo?"· "+w.nameKo:""}</option>`).join("");
   if(preselect) select.value=preselect;
   form.date.value=new Date().toISOString().slice(0,10);
   const range=$("#overallRange"), preview=$("#overallPreview");
