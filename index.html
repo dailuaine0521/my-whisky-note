@@ -249,6 +249,49 @@
             <option>위시리스트</option>
           </select>
         </label>
+        <div class="full ib-section-title">병입 정보</div>
+        <label>병입 유형
+          <select name="bottlingType">
+            <option value="unknown">미확인</option>
+            <option value="OB">공식병입 (OB)</option>
+            <option value="IB">독립병입 (IB)</option>
+          </select>
+        </label>
+        <label>병입사 (Bottler)
+          <input name="bottler" placeholder="예: Signatory Vintage" />
+        </label>
+        <label>시리즈
+          <input name="seriesName" placeholder="예: Cask Strength Collection" />
+        </label>
+        <label>빈티지
+          <input name="vintageYear" type="number" min="1800" max="2200" placeholder="2007" />
+        </label>
+        <label>병입연도
+          <input name="bottlingYear" type="number" min="1800" max="2200" placeholder="2024" />
+        </label>
+        <label>캐스크 번호
+          <input name="caskNumber" placeholder="예: #900123" />
+        </label>
+        <label>싱글 캐스크
+          <select name="singleCask">
+            <option value="">미확인</option>
+            <option value="true">예</option>
+            <option value="false">아니오</option>
+          </select>
+        </label>
+        <label>병입 수량
+          <input name="bottleCount" type="number" min="0" placeholder="예: 612" />
+        </label>
+        <label>캐스크 스트렝스
+          <select name="caskStrength">
+            <option value="">미확인</option>
+            <option value="true">예</option>
+            <option value="false">아니오</option>
+          </select>
+        </label>
+        <label>배치 / 릴리즈
+          <input name="batchRelease" placeholder="예: Batch 3 / Release 2024" />
+        </label>
         <input type="hidden" name="imageUrl" />
         <input type="hidden" name="officialProductUrl" />
         <input type="hidden" name="referenceUrl" />
