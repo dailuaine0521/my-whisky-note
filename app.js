@@ -156,12 +156,12 @@ function renderDetail(){
   $("#quickTasting")?.addEventListener("click",()=>openTastingModal(w.id));
   $("#editWhiskyBtn")?.addEventListener("click",()=>openWhiskyModal(w.id));
   $("#deleteWhiskyBtn")?.addEventListener("click",async()=>{
-    const ok=confirm(`"${w.name}"을 삭제할까요?\n연결된 시음 기록도 함께 삭제됩니다.`);
+    const ok=confirm(`"${w.name}"을 컬렉션에서 삭제할까요?\n기존 시음 기록은 위스키 이름을 남긴 채 보존됩니다.`);
     if(!ok) return;
     if(typeof window.cloudDeleteWhisky==="function"){
       await window.cloudDeleteWhisky(w.id);
     }else{
-      data.tastings=data.tastings.filter(t=>t.whiskyId!==w.id);
+      data.tastings=data.tastings.map(t=>t.whiskyId===w.id?{...t,whiskyId:null,whiskyName:t.whiskyName||w.name}:t);
       data.whiskies=data.whiskies.filter(x=>x.id!==w.id);
       selectedWhiskyId=data.whiskies[0]?.id||null;
       save();
@@ -172,7 +172,7 @@ function renderRecent(){
   const arr = [...data.tastings].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,2);
   $("#recentNotes").innerHTML = arr.map(t=>{
     const w=data.whiskies.find(x=>x.id===t.whiskyId);
-    return `<div class="note-mini"><div class="note-mini-top"><span>${t.date} · ${w?.name||""}</span><b>★ ${t.overall}</b></div><p>${t.overallNote||"-"}</p></div>`
+    return `<div class="note-mini"><div class="note-mini-top"><span>${t.date} · ${w?.name||t.whiskyName||"Unknown"}</span><b>★ ${t.overall}</b></div><p>${t.overallNote||"-"}</p></div>`
   }).join("") || `<div class="empty">아직 시음 기록이 없습니다.</div>`;
 }
 function renderTopFive(){
@@ -190,7 +190,7 @@ function renderTastings(){
     const w=data.whiskies.find(x=>x.id===t.whiskyId);
     return `<article class="tasting-card">
       <div>
-        <div class="tasting-title">${w?.name||"Unknown"}</div>
+        <div class="tasting-title">${w?.name||t.whiskyName||"Unknown"}</div>
         <div class="tasting-meta">${t.date} · 가성비 ${"★".repeat(Number(t.value||0))}</div>
         <div class="note-columns">
           <div class="note-box"><b>향 ${t.nose}</b><p>${t.noseNote||"-"}</p></div>
@@ -344,20 +344,83 @@ $("#openAddWhisky").addEventListener("click",openWhiskyModal);
 $("#openAddWhisky2").addEventListener("click",openWhiskyModal);
 
 function openTastingModal(preselect=selectedWhiskyId){
-  if(!data.whiskies.length){openWhiskyModal();return}
   const tpl=$("#tastingFormTemplate").content.cloneNode(true);
   modalContent.innerHTML="";modalContent.append(tpl);modalBackdrop.classList.add("open");
-  const form=$("#tastingForm"), select=$("#tastingWhiskySelect");
-  select.innerHTML=data.whiskies.map(w=>`<option value="${w.id}">${w.name} ${w.nameKo?"· "+w.nameKo:""}</option>`).join("");
-  if(preselect) select.value=preselect;
+
+  const form=$("#tastingForm");
+  const select=$("#tastingWhiskySelect");
+  const switcher=$("#tastingSourceSwitch");
+  const savedWrap=$("#tastingSavedWrap");
+  const manualWrap=$("#tastingManualWrap");
+  const manualInput=$("#tastingWhiskyName");
+
+  if(data.whiskies.length){
+    select.innerHTML=data.whiskies.map(w=>`<option value="${w.id}">${w.name} ${w.nameKo?"· "+w.nameKo:""}</option>`).join("");
+    if(preselect && data.whiskies.some(w=>w.id===preselect)) select.value=preselect;
+  }else{
+    select.innerHTML='<option value="">저장된 위스키 없음</option>';
+    setMode("manual");
+  }
+
+  function setMode(mode){
+    const manual=mode==="manual";
+    switcher?.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
+    if(savedWrap) savedWrap.hidden=manual;
+    if(manualWrap) manualWrap.hidden=!manual;
+    if(select) select.disabled=manual;
+    if(manualInput) {
+      manualInput.disabled=!manual;
+      manualInput.required=manual;
+      if(manual) setTimeout(()=>manualInput.focus(),0);
+    }
+  }
+
+  switcher?.addEventListener("click",e=>{
+    const btn=e.target.closest("button[data-mode]");
+    if(btn) setMode(btn.dataset.mode);
+  });
+
   form.date.value=new Date().toISOString().slice(0,10);
   const range=$("#overallRange"), preview=$("#overallPreview");
   range.addEventListener("input",()=>preview.textContent=range.value);
+
   form.addEventListener("submit",e=>{
-    e.preventDefault(); const f=new FormData(form);
-    const t={id:"t"+Date.now(),whiskyId:f.get("whiskyId"),date:f.get("date"),nose:Number(f.get("nose")),palate:Number(f.get("palate")),finish:Number(f.get("finish")),balance:Number(f.get("balance")),overall:Number(f.get("overall")),value:Number(f.get("value")),noseNote:f.get("noseNote").trim(),palateNote:f.get("palateNote").trim(),finishNote:f.get("finishNote").trim(),overallNote:f.get("overallNote").trim(),tags:f.get("tags").split(",").map(x=>x.trim()).filter(Boolean)};
-    data.tastings.unshift(t); selectedWhiskyId=t.whiskyId; save(); closeModal(); setView("tasting");
-  })
+    e.preventDefault();
+    const f=new FormData(form);
+    const manual = !manualWrap.hidden;
+    const whiskyId = manual ? null : (f.get("whiskyId") || null);
+    const selected = whiskyId ? data.whiskies.find(w=>w.id===whiskyId) : null;
+    const whiskyName = manual
+      ? String(f.get("whiskyName")||"").trim()
+      : (selected?.name || "");
+
+    if(!whiskyName){
+      alert("위스키 이름을 입력하거나 저장된 위스키를 선택해 주세요.");
+      return;
+    }
+
+    const t={
+      id:"t"+Date.now(),
+      whiskyId,
+      whiskyName,
+      date:f.get("date"),
+      nose:Number(f.get("nose")),
+      palate:Number(f.get("palate")),
+      finish:Number(f.get("finish")),
+      balance:Number(f.get("balance")),
+      overall:Number(f.get("overall")),
+      value:Number(f.get("value")),
+      noseNote:f.get("noseNote").trim(),
+      palateNote:f.get("palateNote").trim(),
+      finishNote:f.get("finishNote").trim(),
+      overallNote:f.get("overallNote").trim(),
+      tags:f.get("tags").split(",").map(x=>x.trim()).filter(Boolean)
+    };
+    data.tastings.unshift(t);
+    save();
+    closeModal();
+    setView("tasting");
+  });
 }
 $("#openAddTasting").addEventListener("click",()=>openTastingModal());
 $("#mobileQuickTasting").addEventListener("click",()=>openTastingModal());
