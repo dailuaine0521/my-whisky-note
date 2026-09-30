@@ -314,8 +314,18 @@
         <button type="button" class="icon-btn" data-close>✕</button>
       </div>
 
-      <label class="full">위스키
-        <select id="tastingWhiskySelect" name="whiskyId" required></select>
+      <div class="tasting-source-switch segmented" id="tastingSourceSwitch">
+        <button type="button" class="active" data-mode="saved">저장된 위스키</button>
+        <button type="button" data-mode="manual">직접 입력</button>
+      </div>
+
+      <label class="full" id="tastingSavedWrap">위스키
+        <select id="tastingWhiskySelect" name="whiskyId"></select>
+      </label>
+
+      <label class="full" id="tastingManualWrap" hidden>위스키 이름
+        <input id="tastingWhiskyName" name="whiskyName" placeholder="예: Springbank 15 / 바에서 마신 위스키 이름" />
+        <span class="muted">컬렉션에는 추가되지 않고 시음 노트에만 저장됩니다.</span>
       </label>
 
       <div class="score-highlight">
