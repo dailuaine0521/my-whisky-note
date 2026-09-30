@@ -47,6 +47,44 @@ function whiskyLatestTasting(id){
 }
 function bottleClass(w){ return w.visual==="amber"?"amber":w.visual==="clear"?"clear":""; }
 
+const BASE_TASTING_TAGS=["피트","스모키","셰리","과일","시트러스","바닐라","꿀","몰트","오크","스파이스","초콜릿","카라멜","너티","플로럴","허브","짭짤함","요오드","건과일"];
+const REPURCHASE_LABELS={
+  must_buy:"꼭 다시 산다",
+  if_price_right:"가격 맞으면 산다",
+  one_and_done:"한 번이면 충분",
+  no_buy:"다시 안 산다"
+};
+function suggestedTastingTags(){
+  const counts={};
+  data.tastings.forEach(t=>(t.tags||[]).forEach(tag=>{
+    const clean=String(tag||"").trim();
+    if(clean) counts[clean]=(counts[clean]||0)+1;
+  }));
+  const learned=Object.entries(counts)
+    .filter(([tag,count])=>count>=2 && !BASE_TASTING_TAGS.includes(tag))
+    .sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0]))
+    .map(([tag])=>tag);
+  return [...BASE_TASTING_TAGS,...learned];
+}
+function whiskyTastingTrend(id){
+  return data.tastings.filter(t=>t.whiskyId===id).sort((a,b)=>a.date.localeCompare(b.date));
+}
+function tasteProfile(){
+  const stats={};
+  data.tastings.forEach(t=>(t.tags||[]).forEach(tag=>{
+    const clean=String(tag||"").trim();
+    if(!clean) return;
+    if(!stats[clean]) stats[clean]={count:0,total:0};
+    stats[clean].count++;
+    stats[clean].total+=Number(t.overall)||0;
+  }));
+  return Object.entries(stats)
+    .map(([tag,v])=>({tag,count:v.count,avg:v.count?Math.round(v.total/v.count):0}))
+    .filter(x=>x.count>=2)
+    .sort((a,b)=>b.avg-a.avg || b.count-a.count)
+    .slice(0,8);
+}
+
 function summary(){
   const scored = data.whiskies.map(w=>whiskyScore(w.id)).filter(v=>v!==null);
   const avg = scored.length ? Math.round(scored.reduce((a,b)=>a+b,0)/scored.length) : 0;
@@ -98,6 +136,7 @@ function renderDetail(){
   selectedWhiskyId = w.id;
   const t = whiskyLatestTasting(w.id);
   const score = whiskyScore(w.id);
+  const trend=whiskyTastingTrend(w.id);
   const ratings = t ? [["향",t.nose],["맛",t.palate],["피니시",t.finish],["밸런스",t.balance],["총평",t.overall]] : [["향","-"],["맛","-"],["피니시","-"],["밸런스","-"],["총평","-"]];
   const visual = w.imageUrl
     ? `<img class="detail-photo" src="${w.imageUrl}" alt="${w.name}" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="bottle-shape ${bottleClass(w)}" style="display:none"></div>`
@@ -106,6 +145,18 @@ function renderDetail(){
     w.officialProductUrl ? `<a class="source-link" href="${w.officialProductUrl}" target="_blank" rel="noopener">공식 제품 페이지</a>` : "",
     w.referenceUrl ? `<a class="source-link" href="${w.referenceUrl}" target="_blank" rel="noopener">보조 참고자료</a>` : ""
   ].filter(Boolean).join(" · ");
+  const trendHtml=trend.length>=2 ? `
+    <div class="tasting-trend">
+      <div class="section-title-row"><h3>시음 변화</h3><span class="muted">${trend.length}회 기록</span></div>
+      <div class="trend-list">
+        ${trend.map(x=>`<div class="trend-row">
+          <span>${x.date}</span>
+          <div class="trend-track"><div class="trend-fill" style="width:${Math.max(0,Math.min(100,Number(x.overall)||0))}%"></div></div>
+          <b>${x.overall}</b>
+          <small>${REPURCHASE_LABELS[x.repurchaseIntent]||""}</small>
+        </div>`).join("")}
+      </div>
+    </div>` : "";
 
   $("#detailPanel").innerHTML = `
     <div class="detail-top">
@@ -118,7 +169,7 @@ function renderDetail(){
           </div>
           <div class="detail-score"><span class="star">★</span> ${score ?? "-"} <small>/100</small></div>
         </div>
-        <div class="pills"><span class="pill">${w.status}</span><span class="pill gold">${w.age||"미확인"}</span>${w.bottlingType&&w.bottlingType!=="unknown"?`<span class="pill ${w.bottlingType==="IB"?"ib-pill":"gold"}">${w.bottlingType}</span>`:""}</div>
+        <div class="pills"><span class="pill">${w.status}</span><span class="pill gold">${w.age||"미확인"}</span>${w.bottlingType&&w.bottlingType!=="unknown"?`<span class="pill ${w.bottlingType==="IB"?"ib-pill":"gold"}">${w.bottlingType}</span>`:""}${w.remainingPercent!==null&&w.remainingPercent!==undefined?`<span class="pill">잔량 ${w.remainingPercent}%</span>`:""}</div>
         <div class="detail-actions">
           <button class="secondary-btn" id="editWhiskyBtn">수정</button>
           <button class="danger-btn" id="deleteWhiskyBtn">삭제</button>
@@ -139,6 +190,8 @@ function renderDetail(){
           ${infoRow("숙성연수",w.age)}
           ${infoRow("도수",w.abv ? w.abv+"%" : "-")}
           ${infoRow("캐스크",w.cask)}
+          ${w.openedAt ? infoRow("개봉일",w.openedAt) : ""}
+          ${w.remainingPercent!==null&&w.remainingPercent!==undefined ? infoRow("잔량",w.remainingPercent+"%") : ""}
           ${infoRow("예상 가격",won(w.marketPrice))}
           ${infoRow("구매 가격",won(w.purchasePrice))}
           ${infoRow("구매일",w.purchaseDate)}
@@ -152,7 +205,8 @@ function renderDetail(){
       <div class="rating-circles">
         ${ratings.map(([k,v])=>`<div class="rating-item"><div class="rating-circle">${v}</div><div>${k}</div></div>`).join("")}
       </div>
-    </div>`;
+    </div>
+    ${trendHtml}`;
   $("#quickTasting")?.addEventListener("click",()=>openTastingModal(w.id));
   $("#editWhiskyBtn")?.addEventListener("click",()=>openWhiskyModal(w.id));
   $("#deleteWhiskyBtn")?.addEventListener("click",async()=>{
@@ -191,7 +245,7 @@ function renderTastings(){
     return `<article class="tasting-card">
       <div>
         <div class="tasting-title">${w?.name||t.whiskyName||"Unknown"}</div>
-        <div class="tasting-meta">${t.date} · 가성비 ${"★".repeat(Number(t.value||0))}</div>
+        <div class="tasting-meta">${t.date} · 가성비 ${"★".repeat(Number(t.value||0))}${t.repurchaseIntent?` · 재구매: ${REPURCHASE_LABELS[t.repurchaseIntent]||t.repurchaseIntent}`:""}</div>
         <div class="note-columns">
           <div class="note-box"><b>향 ${t.nose}</b><p>${t.noseNote||"-"}</p></div>
           <div class="note-box"><b>맛 ${t.palate}</b><p>${t.palateNote||"-"}</p></div>
@@ -240,6 +294,9 @@ function renderStats(){
       <div class="panel stats-card"><h3>자주 쓴 향미 태그</h3>
         ${tags.map(([k,v])=>`<div class="top-row"><span>${k}</span><b>${v}회</b></div>`).join("")||"<div class='empty'>태그 없음</div>"}
       </div>
+      <div class="panel stats-card"><h3>내 취향 프로필</h3>
+        ${tasteProfile().map(x=>`<div class="top-row"><span>${x.tag}</span><b>평균 ${x.avg} · ${x.count}회</b></div>`).join("")||"<div class='empty'>같은 태그를 2회 이상 기록하면 취향이 나타납니다.</div>"}
+      </div>
     </div>`;
 }
 
@@ -285,6 +342,7 @@ function openWhiskyModal(editId=null){
   const existing = editId ? data.whiskies.find(w=>w.id===editId) : null;
   const title = form.querySelector(".modal-head h2");
   if(title) title.textContent = existing ? "위스키 수정" : "위스키 추가";
+  const whiskyId=existing?.id || crypto.randomUUID();
 
   if(existing){
     const values={
@@ -292,56 +350,146 @@ function openWhiskyModal(editId=null){
       country:existing.country||"", region:existing.region||"", age:existing.age||"",
       abv:existing.abv??"", cask:existing.cask||"", marketPrice:existing.marketPrice??"",
       purchasePrice:existing.purchasePrice??"", purchaseDate:existing.purchaseDate||"",
-      status:existing.status||"보유", bottlingType:existing.bottlingType||"unknown",
-      bottler:existing.bottler||"", seriesName:existing.seriesName||"",
-      vintageYear:existing.vintageYear??"", bottlingYear:existing.bottlingYear??"",
-      caskNumber:existing.caskNumber||"",
+      status:existing.status||"보유", openedAt:existing.openedAt||"",
+      remainingPercent:existing.remainingPercent??"",
+      bottlingType:existing.bottlingType||"unknown", bottler:existing.bottler||"",
+      seriesName:existing.seriesName||"", vintageYear:existing.vintageYear??"",
+      bottlingYear:existing.bottlingYear??"", caskNumber:existing.caskNumber||"",
       singleCask:existing.singleCask===true?"true":existing.singleCask===false?"false":"",
       bottleCount:existing.bottleCount??"",
       caskStrength:existing.caskStrength===true?"true":existing.caskStrength===false?"false":"",
       batchRelease:existing.batchRelease||"", imageUrl:existing.imageUrl||"",
-      officialProductUrl:existing.officialProductUrl||"", referenceUrl:existing.referenceUrl||"",
-      sourceName:existing.sourceName||""
+      officialImageUrl:existing.officialImageUrl||(!existing.imagePath?existing.imageUrl:""),
+      imagePath:existing.imagePath||"", officialProductUrl:existing.officialProductUrl||"",
+      referenceUrl:existing.referenceUrl||"", sourceName:existing.sourceName||""
     };
     Object.entries(values).forEach(([k,v])=>{ if(form.elements[k]) form.elements[k].value=v; });
   }else{
     form.purchaseDate.value = new Date().toISOString().slice(0,10);
   }
 
-  form.addEventListener("submit",e=>{
-    e.preventDefault(); const f=new FormData(form);
-    const w={
-      id:existing?.id || "w"+Date.now(),
-      name:f.get("name").trim(), nameKo:f.get("nameKo").trim(),
-      distillery:f.get("distillery").trim(), country:f.get("country").trim(),
-      region:f.get("region").trim(), age:f.get("age").trim(),
-      abv:Number(f.get("abv"))||null, cask:f.get("cask").trim(),
-      marketPrice:Number(f.get("marketPrice"))||null,
-      purchasePrice:Number(f.get("purchasePrice"))||null,
-      purchaseDate:f.get("purchaseDate"), status:f.get("status"),
-      bottlingType:f.get("bottlingType")||"unknown",
-      bottler:(f.get("bottler")||"").trim(), seriesName:(f.get("seriesName")||"").trim(),
-      vintageYear:Number(f.get("vintageYear"))||null, bottlingYear:Number(f.get("bottlingYear"))||null,
-      caskNumber:(f.get("caskNumber")||"").trim(),
-      singleCask:f.get("singleCask")===""?null:f.get("singleCask")==="true",
-      bottleCount:Number(f.get("bottleCount"))||null,
-      caskStrength:f.get("caskStrength")===""?null:f.get("caskStrength")==="true",
-      batchRelease:(f.get("batchRelease")||"").trim(),
-      imageUrl:f.get("imageUrl")||"", officialProductUrl:f.get("officialProductUrl")||"",
-      referenceUrl:f.get("referenceUrl")||"", sourceName:f.get("sourceName")||"",
-      visual:existing?.visual||"amber"
-    };
-    if(existing){
-      const idx=data.whiskies.findIndex(x=>x.id===existing.id);
-      data.whiskies[idx]=w;
-    }else{
-      data.whiskies.unshift(w);
-    }
-    selectedWhiskyId=w.id; save(); closeModal();
-  })
+  const statusSelect=form.elements.status;
+  const openedAt=form.elements.openedAt;
+  const remaining=form.elements.remainingPercent;
+  statusSelect?.addEventListener("change",()=>{
+    if(statusSelect.value==="개봉" && !openedAt.value) openedAt.value=new Date().toISOString().slice(0,10);
+    if(statusSelect.value==="완병") remaining.value="0";
+  });
+
+  const fileInput=form.elements.whiskyImageFile;
+  const preview=form.querySelector("[data-upload-preview]");
+  if(existing?.imageUrl && preview) preview.innerHTML=`<img src="${existing.imageUrl}" alt="현재 병 사진">`;
+  fileInput?.addEventListener("change",()=>{
+    const file=fileInput.files?.[0];
+    if(!file || !preview) return;
+    const url=URL.createObjectURL(file);
+    preview.innerHTML=`<img src="${url}" alt="업로드 미리보기">`;
+  });
+
+  form.addEventListener("submit",async e=>{
+    e.preventDefault();
+    const submit=form.querySelector('button[type="submit"]');
+    submit.disabled=true;
+    try{
+      const f=new FormData(form);
+      let imagePath=String(f.get("imagePath")||"");
+      let imageUrl=String(f.get("imageUrl")||"");
+      const officialImageUrl=String(f.get("officialImageUrl")||imageUrl||"");
+      const file=fileInput?.files?.[0];
+
+      if(file){
+        if(typeof window.cloudUploadWhiskyImage!=="function") throw new Error("사진 업로드 기능을 불러오지 못했습니다.");
+        const uploaded=await window.cloudUploadWhiskyImage(file,whiskyId,imagePath);
+        if(uploaded){
+          imagePath=uploaded.path;
+          imageUrl=uploaded.url;
+        }
+      }else if(!imagePath){
+        imageUrl=officialImageUrl;
+      }
+
+      const status=String(f.get("status")||"보유");
+      let opened=String(f.get("openedAt")||"");
+      if(status==="개봉" && !opened) opened=new Date().toISOString().slice(0,10);
+      let remainingPercent=f.get("remainingPercent")===""?null:Number(f.get("remainingPercent"));
+      if(status==="완병") remainingPercent=0;
+
+      const w={
+        id:whiskyId,
+        name:String(f.get("name")||"").trim(), nameKo:String(f.get("nameKo")||"").trim(),
+        distillery:String(f.get("distillery")||"").trim(), country:String(f.get("country")||"").trim(),
+        region:String(f.get("region")||"").trim(), age:String(f.get("age")||"").trim(),
+        abv:Number(f.get("abv"))||null, cask:String(f.get("cask")||"").trim(),
+        marketPrice:Number(f.get("marketPrice"))||null,
+        purchasePrice:Number(f.get("purchasePrice"))||null,
+        purchaseDate:String(f.get("purchaseDate")||""), status,
+        openedAt:opened, remainingPercent,
+        bottlingType:String(f.get("bottlingType")||"unknown"),
+        bottler:String(f.get("bottler")||"").trim(), seriesName:String(f.get("seriesName")||"").trim(),
+        vintageYear:Number(f.get("vintageYear"))||null, bottlingYear:Number(f.get("bottlingYear"))||null,
+        caskNumber:String(f.get("caskNumber")||"").trim(),
+        singleCask:f.get("singleCask")===""?null:f.get("singleCask")==="true",
+        bottleCount:Number(f.get("bottleCount"))||null,
+        caskStrength:f.get("caskStrength")===""?null:f.get("caskStrength")==="true",
+        batchRelease:String(f.get("batchRelease")||"").trim(),
+        imageUrl, officialImageUrl, imagePath,
+        officialProductUrl:String(f.get("officialProductUrl")||""),
+        referenceUrl:String(f.get("referenceUrl")||""), sourceName:String(f.get("sourceName")||""),
+        sourceCheckedAt:existing?.sourceCheckedAt||"",
+        visual:existing?.visual||"amber"
+      };
+      if(existing){
+        const idx=data.whiskies.findIndex(x=>x.id===existing.id);
+        data.whiskies[idx]=w;
+      }else data.whiskies.unshift(w);
+      selectedWhiskyId=w.id; save(); closeModal();
+    }catch(err){
+      alert("저장 실패: "+(err?.message||err));
+    }finally{submit.disabled=false;}
+  });
 }
 $("#openAddWhisky").addEventListener("click",openWhiskyModal);
 $("#openAddWhisky2").addEventListener("click",openWhiskyModal);
+$("#openCompareWhisky")?.addEventListener("click",openCompareModal);
+
+function openCompareModal(){
+  if(data.whiskies.length<2){alert("비교하려면 컬렉션에 위스키가 2병 이상 필요합니다.");return;}
+  modalContent.innerHTML=`
+    <div class="modal-head">
+      <div><div class="eyebrow">COMPARE</div><h2>위스키 비교</h2></div>
+      <button type="button" class="icon-btn" data-close>✕</button>
+    </div>
+    <p class="muted">2~4병을 선택하세요.</p>
+    <div class="compare-picker">
+      ${data.whiskies.map(w=>`<label><input type="checkbox" value="${w.id}"> <span>${w.name}</span></label>`).join("")}
+    </div>
+    <div class="modal-actions"><button type="button" class="primary-btn" id="runCompare">선택한 위스키 비교</button></div>
+    <div id="compareResult"></div>`;
+  modalBackdrop.classList.add("open");
+
+  $("#runCompare")?.addEventListener("click",()=>{
+    const ids=$$(".compare-picker input:checked",modalContent).map(x=>x.value);
+    if(ids.length<2||ids.length>4){alert("2~4병을 선택해 주세요.");return;}
+    const ws=ids.map(id=>data.whiskies.find(w=>w.id===id)).filter(Boolean);
+    const rows=[
+      ["상태",w=>w.status||"-"],
+      ["병입",w=>w.bottlingType||"-"],
+      ["증류소",w=>w.distillery||"-"],
+      ["병입사",w=>w.bottler||"-"],
+      ["숙성",w=>w.age||"-"],
+      ["ABV",w=>w.abv? w.abv+"%":"-"],
+      ["캐스크",w=>w.cask||"-"],
+      ["구매가",w=>won(w.purchasePrice)],
+      ["내 점수",w=>whiskyScore(w.id)??"-"],
+      ["잔량",w=>w.remainingPercent===null||w.remainingPercent===undefined?"-":w.remainingPercent+"%"]
+    ];
+    $("#compareResult").innerHTML=`
+      <div class="compare-table-wrap"><table class="compare-table">
+        <thead><tr><th>항목</th>${ws.map(w=>`<th>${w.name}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map(([label,get])=>`<tr><th>${label}</th>${ws.map(w=>`<td>${get(w)}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table></div>`;
+  });
+}
 
 function openTastingModal(preselect=selectedWhiskyId){
   const tpl=$("#tastingFormTemplate").content.cloneNode(true);
@@ -354,6 +502,19 @@ function openTastingModal(preselect=selectedWhiskyId){
   const manualWrap=$("#tastingManualWrap");
   const manualInput=$("#tastingWhiskyName");
 
+  function setMode(mode){
+    const manual=mode==="manual";
+    switcher?.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
+    if(savedWrap) savedWrap.hidden=manual;
+    if(manualWrap) manualWrap.hidden=!manual;
+    if(select) select.disabled=manual;
+    if(manualInput){
+      manualInput.disabled=!manual;
+      manualInput.required=manual;
+      if(manual) setTimeout(()=>manualInput.focus(),0);
+    }
+  }
+
   if(data.whiskies.length){
     select.innerHTML=data.whiskies.map(w=>`<option value="${w.id}">${w.name} ${w.nameKo?"· "+w.nameKo:""}</option>`).join("");
     if(preselect && data.whiskies.some(w=>w.id===preselect)) select.value=preselect;
@@ -362,23 +523,29 @@ function openTastingModal(preselect=selectedWhiskyId){
     setMode("manual");
   }
 
-  function setMode(mode){
-    const manual=mode==="manual";
-    switcher?.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
-    if(savedWrap) savedWrap.hidden=manual;
-    if(manualWrap) manualWrap.hidden=!manual;
-    if(select) select.disabled=manual;
-    if(manualInput) {
-      manualInput.disabled=!manual;
-      manualInput.required=manual;
-      if(manual) setTimeout(()=>manualInput.focus(),0);
-    }
-  }
-
   switcher?.addEventListener("click",e=>{
     const btn=e.target.closest("button[data-mode]");
     if(btn) setMode(btn.dataset.mode);
   });
+
+  const tagInput=form.elements.tags;
+  const tagWrap=form.querySelector("[data-tag-suggestions]");
+  const renderTagButtons=()=>{
+    if(!tagWrap) return;
+    const selectedTags=new Set(String(tagInput.value||"").split(",").map(x=>x.trim()).filter(Boolean));
+    tagWrap.innerHTML=suggestedTastingTags().map(tag=>`<button type="button" class="tag-chip ${selectedTags.has(tag)?"active":""}" data-tag="${tag}">${tag}</button>`).join("");
+  };
+  renderTagButtons();
+  tagWrap?.addEventListener("click",e=>{
+    const btn=e.target.closest("[data-tag]");
+    if(!btn) return;
+    const tags=String(tagInput.value||"").split(",").map(x=>x.trim()).filter(Boolean);
+    const set=new Set(tags);
+    if(set.has(btn.dataset.tag)) set.delete(btn.dataset.tag); else set.add(btn.dataset.tag);
+    tagInput.value=[...set].join(", ");
+    renderTagButtons();
+  });
+  tagInput?.addEventListener("input",renderTagButtons);
 
   form.date.value=new Date().toISOString().slice(0,10);
   const range=$("#overallRange"), preview=$("#overallPreview");
@@ -387,39 +554,26 @@ function openTastingModal(preselect=selectedWhiskyId){
   form.addEventListener("submit",e=>{
     e.preventDefault();
     const f=new FormData(form);
-    const manual = !manualWrap.hidden;
-    const whiskyId = manual ? null : (f.get("whiskyId") || null);
-    const selected = whiskyId ? data.whiskies.find(w=>w.id===whiskyId) : null;
-    const whiskyName = manual
-      ? String(f.get("whiskyName")||"").trim()
-      : (selected?.name || "");
-
-    if(!whiskyName){
-      alert("위스키 이름을 입력하거나 저장된 위스키를 선택해 주세요.");
-      return;
-    }
+    const manual=!manualWrap.hidden;
+    const whiskyId=manual?null:(f.get("whiskyId")||null);
+    const selected=whiskyId?data.whiskies.find(w=>w.id===whiskyId):null;
+    const whiskyName=manual?String(f.get("whiskyName")||"").trim():(selected?.name||"");
+    if(!whiskyName){alert("위스키 이름을 입력하거나 저장된 위스키를 선택해 주세요.");return;}
 
     const t={
-      id:"t"+Date.now(),
-      whiskyId,
-      whiskyName,
-      date:f.get("date"),
-      nose:Number(f.get("nose")),
-      palate:Number(f.get("palate")),
-      finish:Number(f.get("finish")),
-      balance:Number(f.get("balance")),
-      overall:Number(f.get("overall")),
-      value:Number(f.get("value")),
-      noseNote:f.get("noseNote").trim(),
-      palateNote:f.get("palateNote").trim(),
-      finishNote:f.get("finishNote").trim(),
-      overallNote:f.get("overallNote").trim(),
-      tags:f.get("tags").split(",").map(x=>x.trim()).filter(Boolean)
+      id:crypto.randomUUID(), whiskyId, whiskyName,
+      date:String(f.get("date")||""),
+      nose:Number(f.get("nose")), palate:Number(f.get("palate")),
+      finish:Number(f.get("finish")), balance:Number(f.get("balance")),
+      overall:Number(f.get("overall")), value:Number(f.get("value")),
+      repurchaseIntent:String(f.get("repurchaseIntent")||""),
+      noseNote:String(f.get("noseNote")||"").trim(),
+      palateNote:String(f.get("palateNote")||"").trim(),
+      finishNote:String(f.get("finishNote")||"").trim(),
+      overallNote:String(f.get("overallNote")||"").trim(),
+      tags:String(f.get("tags")||"").split(",").map(x=>x.trim()).filter(Boolean)
     };
-    data.tastings.unshift(t);
-    save();
-    closeModal();
-    setView("tasting");
+    data.tastings.unshift(t); save(); closeModal(); setView("tasting");
   });
 }
 $("#openAddTasting").addEventListener("click",()=>openTastingModal());
