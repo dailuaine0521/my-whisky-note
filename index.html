@@ -249,6 +249,25 @@
             <option>위시리스트</option>
           </select>
         </label>
+        <label>개봉일
+          <input name="openedAt" type="date" />
+        </label>
+        <label>잔량
+          <select name="remainingPercent">
+            <option value="">미입력</option>
+            <option value="100">100%</option>
+            <option value="75">75%</option>
+            <option value="50">50%</option>
+            <option value="25">25%</option>
+            <option value="10">거의 없음 (10%)</option>
+            <option value="0">0% / 완병</option>
+          </select>
+        </label>
+        <label class="full">내 병 사진
+          <input name="whiskyImageFile" type="file" accept="image/jpeg,image/png,image/webp" />
+          <span class="muted">직접 찍은 사진을 올리면 공식 이미지보다 우선 표시됩니다.</span>
+          <div class="upload-preview" data-upload-preview></div>
+        </label>
         <div class="full ib-section-title">병입 정보</div>
         <label>병입 유형
           <select name="bottlingType">
@@ -293,6 +312,8 @@
           <input name="batchRelease" placeholder="예: Batch 3 / Release 2024" />
         </label>
         <input type="hidden" name="imageUrl" />
+        <input type="hidden" name="officialImageUrl" />
+        <input type="hidden" name="imagePath" />
         <input type="hidden" name="officialProductUrl" />
         <input type="hidden" name="referenceUrl" />
         <input type="hidden" name="sourceName" />
@@ -357,7 +378,9 @@
           <textarea name="overallNote" rows="3" placeholder="다시 찾게 되는 매력적인 위스키…"></textarea>
         </label>
         <label class="full">태그
-          <input name="tags" placeholder="스모키, 셰리, 다크초콜릿, 바닐라" />
+          <div class="tag-suggestions" data-tag-suggestions></div>
+          <input name="tags" placeholder="태그를 직접 입력해도 됩니다. 쉼표로 구분" />
+          <span class="muted">자주 직접 입력한 태그는 자동으로 추천 태그에 추가됩니다.</span>
         </label>
         <label>시음일
           <input name="date" type="date" />
@@ -369,6 +392,15 @@
             <option value="3">★★★☆☆</option>
             <option value="2">★★☆☆☆</option>
             <option value="1">★☆☆☆☆</option>
+          </select>
+        </label>
+        <label>재구매 의사
+          <select name="repurchaseIntent">
+            <option value="">미입력</option>
+            <option value="must_buy">꼭 다시 산다</option>
+            <option value="if_price_right">가격 맞으면 산다</option>
+            <option value="one_and_done">한 번이면 충분</option>
+            <option value="no_buy">다시 안 산다</option>
           </select>
         </label>
       </div>
