@@ -353,7 +353,7 @@ async function runWhiskyLookup(form){
       cask: verifiedValue(f.cask),
       imageUrl: res.image_url || "",
       officialProductUrl: result.official_product_url || "",
-      referenceUrl: result.reference_url || "",
+      referenceUrl: result.reference_url || res.reference_url || "",
       sourceName: result.source_name || (result.official_product_url ? "Official source" : "")
     };
 
