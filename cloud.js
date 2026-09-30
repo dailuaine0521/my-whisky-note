@@ -143,6 +143,16 @@ function whiskyToDb(w){
     purchase_price:w.purchasePrice || null,
     purchase_date:w.purchaseDate || null,
     status:w.status || "보유",
+    bottling_type:w.bottlingType || "unknown",
+    bottler:w.bottler || null,
+    series_name:w.seriesName || null,
+    vintage_year:w.vintageYear || null,
+    bottling_year:w.bottlingYear || null,
+    cask_number:w.caskNumber || null,
+    single_cask:w.singleCask ?? null,
+    bottle_count:w.bottleCount || null,
+    cask_strength:w.caskStrength ?? null,
+    batch_release:w.batchRelease || null,
     image_url:w.imageUrl || null,
     official_product_url:w.officialProductUrl || null,
     reference_url:w.referenceUrl || null,
@@ -188,6 +198,16 @@ function dbToWhisky(w){
     purchasePrice:w.purchase_price == null ? null : Number(w.purchase_price),
     purchaseDate:w.purchase_date || "",
     status:w.status || "보유",
+    bottlingType:w.bottling_type || "unknown",
+    bottler:w.bottler || "",
+    seriesName:w.series_name || "",
+    vintageYear:w.vintage_year ?? null,
+    bottlingYear:w.bottling_year ?? null,
+    caskNumber:w.cask_number || "",
+    singleCask:w.single_cask ?? null,
+    bottleCount:w.bottle_count ?? null,
+    caskStrength:w.cask_strength ?? null,
+    batchRelease:w.batch_release || "",
     imageUrl:w.image_url || "",
     officialProductUrl:w.official_product_url || "",
     referenceUrl:w.reference_url || "",
@@ -345,12 +365,22 @@ async function runWhiskyLookup(form){
     const f = result.fields || {};
     const values = {
       nameKo: result.name_ko || "",
+      bottlingType: verifiedValue(f.bottling_type) || "unknown",
+      bottler: verifiedValue(f.bottler),
       distillery: verifiedValue(f.distillery),
+      seriesName: verifiedValue(f.series_name),
       country: verifiedValue(f.country),
       region: verifiedValue(f.region),
+      vintageYear: verifiedValue(f.vintage_year),
+      bottlingYear: verifiedValue(f.bottling_year),
       age: verifiedValue(f.is_nas) === true ? "NAS" : verifiedValue(f.age_years),
       abv: verifiedValue(f.abv),
       cask: verifiedValue(f.cask),
+      caskNumber: verifiedValue(f.cask_number),
+      singleCask: verifiedValue(f.single_cask),
+      bottleCount: verifiedValue(f.bottle_count),
+      caskStrength: verifiedValue(f.cask_strength),
+      batchRelease: verifiedValue(f.batch_release),
       imageUrl: res.image_url || "",
       officialProductUrl: result.official_product_url || "",
       referenceUrl: result.reference_url || res.reference_url || "",
@@ -360,7 +390,10 @@ async function runWhiskyLookup(form){
     Object.entries(values).forEach(([key,val])=>{
       if (val === null || val === undefined || val === "") return;
       const input=form.elements[key];
-      if (input) input.value=String(val);
+      if (input) {
+        if (typeof val === "boolean") input.value = val ? "true" : "false";
+        else input.value=String(val);
+      }
     });
 
     const prices = Array.isArray(result.price_candidates) ? result.price_candidates : [];
