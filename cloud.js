@@ -146,6 +146,9 @@ function whiskyToDb(w){
     purchase_price:w.purchasePrice || null,
     purchase_date:w.purchaseDate || null,
     status:w.status || "보유",
+    opened_at:w.openedAt || null,
+    remaining_percent:w.remainingPercent === null || w.remainingPercent === undefined || w.remainingPercent === "" ? null : Number(w.remainingPercent),
+    image_path:w.imagePath || null,
     bottling_type:w.bottlingType || "unknown",
     bottler:w.bottler || null,
     series_name:w.seriesName || null,
@@ -156,7 +159,7 @@ function whiskyToDb(w){
     bottle_count:w.bottleCount || null,
     cask_strength:w.caskStrength ?? null,
     batch_release:w.batchRelease || null,
-    image_url:w.imageUrl || null,
+    image_url:w.officialImageUrl || (!w.imagePath ? (w.imageUrl || null) : null),
     official_product_url:w.officialProductUrl || null,
     reference_url:w.referenceUrl || null,
     source_name:w.sourceName || null,
@@ -178,6 +181,7 @@ function tastingToDb(t){
     balance_score:t.balance ?? null,
     overall_score:t.overall,
     value_score:t.value ?? null,
+    repurchase_intent:t.repurchaseIntent || null,
     nose_note:t.noseNote || null,
     palate_note:t.palateNote || null,
     finish_note:t.finishNote || null,
@@ -202,6 +206,9 @@ function dbToWhisky(w){
     purchasePrice:w.purchase_price == null ? null : Number(w.purchase_price),
     purchaseDate:w.purchase_date || "",
     status:w.status || "보유",
+    openedAt:w.opened_at || "",
+    remainingPercent:w.remaining_percent ?? null,
+    imagePath:w.image_path || "",
     bottlingType:w.bottling_type || "unknown",
     bottler:w.bottler || "",
     seriesName:w.series_name || "",
@@ -213,6 +220,7 @@ function dbToWhisky(w){
     caskStrength:w.cask_strength ?? null,
     batchRelease:w.batch_release || "",
     imageUrl:w.image_url || "",
+    officialImageUrl:w.image_url || "",
     officialProductUrl:w.official_product_url || "",
     referenceUrl:w.reference_url || "",
     sourceName:w.source_name || "",
@@ -233,6 +241,7 @@ function dbToTasting(t){
     balance:t.balance_score,
     overall:t.overall_score,
     value:t.value_score,
+    repurchaseIntent:t.repurchase_intent || "",
     noseNote:t.nose_note || "",
     palateNote:t.palate_note || "",
     finishNote:t.finish_note || "",
@@ -240,6 +249,42 @@ function dbToTasting(t){
     tags:Array.isArray(t.tags) ? t.tags : []
   };
 }
+
+async function signedWhiskyImageUrl(path){
+  if(!path) return "";
+  const {data:res,error}=await sb.storage.from("whisky-images").createSignedUrl(path,60*60*24*7);
+  if(error){ console.warn("Signed image URL failed",error); return ""; }
+  return res?.signedUrl || "";
+}
+
+async function refreshPrivateImageUrls(){
+  const targets=data.whiskies.filter(w=>w.imagePath);
+  await Promise.all(targets.map(async w=>{
+    const url=await signedWhiskyImageUrl(w.imagePath);
+    if(url) w.imageUrl=url;
+    else if(w.officialImageUrl) w.imageUrl=w.officialImageUrl;
+  }));
+}
+
+window.cloudUploadWhiskyImage=async function(file,whiskyId,oldPath=""){
+  if(!file) return null;
+  if(!cloudUser) throw new Error("사진 업로드는 로그인 후 사용할 수 있습니다.");
+  if(!["image/jpeg","image/png","image/webp"].includes(file.type)) throw new Error("JPG, PNG, WEBP 이미지만 업로드할 수 있습니다.");
+  if(file.size>5*1024*1024) throw new Error("이미지는 5MB 이하만 업로드할 수 있습니다.");
+
+  const ext=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
+  const path=`${cloudUser.id}/${whiskyId}/${Date.now()}.${ext}`;
+  const {error}=await sb.storage.from("whisky-images").upload(path,file,{upsert:false,contentType:file.type});
+  if(error) throw error;
+
+  if(oldPath && oldPath!==path){
+    const {error:delError}=await sb.storage.from("whisky-images").remove([oldPath]);
+    if(delError) console.warn("Old image delete failed",delError);
+  }
+
+  const url=await signedWhiskyImageUrl(path);
+  return {path,url};
+};
 
 async function pushCloud(){
   if (!cloudUser || cloudSyncing) return;
@@ -284,6 +329,7 @@ async function pullCloud(){
   }
   data = { whiskies:(ws||[]).map(dbToWhisky), tastings:(ts||[]).map(dbToTasting) };
   selectedWhiskyId = data.whiskies[0]?.id || null;
+  await refreshPrivateImageUrls();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   renderAll();
   lastCloudSyncAt = new Date().toISOString();
@@ -450,6 +496,7 @@ async function runWhiskyLookup(form){
       bottleCount: verifiedValue(f.bottle_count),
       caskStrength: verifiedValue(f.cask_strength),
       batchRelease: verifiedValue(f.batch_release),
+      officialImageUrl: res.image_url || "",
       imageUrl: res.image_url || "",
       officialProductUrl: result.official_product_url || "",
       referenceUrl: result.reference_url || res.reference_url || "",
@@ -459,6 +506,7 @@ async function runWhiskyLookup(form){
     Object.entries(values).forEach(([key,val])=>{
       if (val === null || val === undefined || val === "") return;
       const input=form.elements[key];
+      if (key==="imageUrl" && form.elements.imagePath?.value) return;
       if (input) {
         if (typeof val === "boolean") input.value = val ? "true" : "false";
         else input.value=String(val);
@@ -506,7 +554,12 @@ async function runWhiskyLookup(form){
 
 window.cloudDeleteWhisky = async function(id){
   if (!id) return;
+  const removedBefore = data.whiskies.find(w=>w.id===id);
   if (cloudUser) {
+    if(removedBefore?.imagePath){
+      const {error:imageDeleteError}=await sb.storage.from("whisky-images").remove([removedBefore.imagePath]);
+      if(imageDeleteError) console.warn(imageDeleteError);
+    }
     const { error } = await sb.from("whiskies").delete().eq("id",id).eq("user_id",cloudUser.id);
     if (error) {
       console.error(error);
