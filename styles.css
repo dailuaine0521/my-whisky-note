@@ -314,3 +314,11 @@ button{cursor:pointer}
 @media(max-width:760px){
   .auth-grid{grid-template-columns:1fr}
 }
+.whisky-photo{max-width:78%;max-height:125px;object-fit:contain;display:block}
+.detail-photo{max-width:82%;max-height:230px;object-fit:contain;display:block}
+.detail-actions{display:flex;gap:8px;margin:10px 0}
+.source-links{margin-top:10px;font-size:11px;line-height:1.6}
+.source-link{color:#8a5c22;text-decoration:none}
+.source-link:hover{text-decoration:underline}
+.ai-image-preview{margin-top:10px;background:#fffaf2;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;justify-content:center}
+.ai-image-preview img{max-width:120px;max-height:150px;object-fit:contain}
