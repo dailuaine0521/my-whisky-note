@@ -117,7 +117,10 @@ function normalizeLocalIds(){
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t.id)) {
       t.id = crypto.randomUUID();
     }
-    t.whiskyId = idMap.get(t.whiskyId) || t.whiskyId;
+    if (t.whiskyId) t.whiskyId = idMap.get(t.whiskyId) || t.whiskyId;
+    if (!t.whiskyName && t.whiskyId) {
+      t.whiskyName = data.whiskies.find(w=>w.id===t.whiskyId)?.name || "";
+    }
   });
   if (selectedWhiskyId) selectedWhiskyId = idMap.get(selectedWhiskyId) || selectedWhiskyId;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -166,7 +169,8 @@ function tastingToDb(t){
   return {
     id:t.id,
     user_id:cloudUser.id,
-    whisky_id:t.whiskyId,
+    whisky_id:t.whiskyId || null,
+    whisky_name:t.whiskyName || data.whiskies.find(w=>w.id===t.whiskyId)?.name || "Unknown",
     tasting_date:t.date || new Date().toISOString().slice(0,10),
     nose_score:t.nose ?? null,
     palate_score:t.palate ?? null,
@@ -220,7 +224,8 @@ function dbToWhisky(w){
 function dbToTasting(t){
   return {
     id:t.id,
-    whiskyId:t.whisky_id,
+    whiskyId:t.whisky_id || null,
+    whiskyName:t.whisky_name || "",
     date:t.tasting_date,
     nose:t.nose_score,
     palate:t.palate_score,
@@ -509,7 +514,10 @@ window.cloudDeleteWhisky = async function(id){
       return;
     }
   }
-  data.tastings = data.tastings.filter(t=>t.whiskyId!==id);
+  const removed = data.whiskies.find(w=>w.id===id);
+  data.tastings = data.tastings.map(t=>t.whiskyId===id
+    ? {...t, whiskyId:null, whiskyName:t.whiskyName || removed?.name || "Unknown"}
+    : t);
   data.whiskies = data.whiskies.filter(w=>w.id!==id);
   selectedWhiskyId = data.whiskies[0]?.id || null;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
