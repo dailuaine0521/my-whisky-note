@@ -347,6 +347,70 @@ function verifiedValue(field){
   return field?.status === "verified" ? field.value : null;
 }
 
+function escapeHtml(value){
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[ch]));
+}
+
+function safeHttpUrl(value){
+  try{
+    const u=new URL(String(value||""));
+    return ["http:","https:"].includes(u.protocol) ? u.href : "";
+  }catch{return ""}
+}
+
+function sourceDomain(url){
+  try{return new URL(url).hostname.replace(/^www\./,"")}catch{return ""}
+}
+
+function buildSourceList(res,result){
+  const all = Array.isArray(res?.sources) ? res.sources : [];
+  const used = new Set();
+
+  Object.values(result?.fields || {}).forEach(field=>{
+    if(field?.status==="verified"){
+      const u=safeHttpUrl(field?.source_url);
+      if(u) used.add(u);
+    }
+  });
+
+  (Array.isArray(result?.price_candidates) ? result.price_candidates : []).forEach(p=>{
+    if(p?.status==="verified"){
+      const u=safeHttpUrl(p?.source_url);
+      if(u) used.add(u);
+    }
+  });
+
+  const official=safeHttpUrl(result?.official_product_url);
+  if(official) used.add(official);
+
+  const items = all.map((src,i)=>{
+    const url=safeHttpUrl(src?.url);
+    if(!url) return "";
+    const title=escapeHtml(src?.title || sourceDomain(url) || ("출처 "+(i+1)));
+    const domain=escapeHtml(sourceDomain(url));
+    const verified=used.has(url);
+    return `<li class="ai-source-item ${verified?"verified":""}">
+      <span class="ai-source-mark">${verified?"✓":"·"}</span>
+      <div>
+        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${title}</a>
+        <div class="ai-source-domain">${domain}${verified?" · 직접 검증에 사용":""}</div>
+      </div>
+    </li>`;
+  }).filter(Boolean).join("");
+
+  return {
+    usedCount: used.size,
+    totalCount: all.length,
+    html: items ? `<details class="ai-sources">
+      <summary>출처 ${all.length}개 보기</summary>
+      <div class="ai-sources-note">✓ 표시는 실제 자동입력 값의 검증 근거로 사용된 출처입니다.</div>
+      <ol class="ai-source-list">${items}</ol>
+    </details>` : ""
+  };
+}
+
 async function runWhiskyLookup(form){
   if (!cloudUser) return alert("AI 검색은 로그인 후 사용할 수 있습니다.");
   const name = form.elements.name.value.trim();
@@ -400,11 +464,15 @@ async function runWhiskyLookup(form){
     const krw = prices.find(p=>p.currency==="KRW");
     if (krw && form.elements.marketPrice) form.elements.marketPrice.value = Math.round(krw.price);
 
-    const img = res.image_url ? `<div class="ai-image-preview"><img src="${res.image_url}" alt="제품 이미지" referrerpolicy="no-referrer"></div>` : "";
-    const official = result.official_product_url ? ` · <a href="${result.official_product_url}" target="_blank" rel="noopener">공식 출처</a>` : "";
-    const reference = result.reference_url ? ` · <a href="${result.reference_url}" target="_blank" rel="noopener">Whiskybase/보조자료</a>` : "";
+    const imgUrl=safeHttpUrl(res.image_url);
+    const img = imgUrl ? `<div class="ai-image-preview"><img src="${escapeHtml(imgUrl)}" alt="제품 이미지" referrerpolicy="no-referrer"></div>` : "";
+    const officialUrl=safeHttpUrl(result.official_product_url);
+    const referenceUrl=safeHttpUrl(result.reference_url || res.reference_url);
+    const official = officialUrl ? ` · <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">공식 출처</a>` : "";
+    const reference = referenceUrl ? ` · <a href="${escapeHtml(referenceUrl)}" target="_blank" rel="noopener noreferrer">Whiskybase 참고 검색</a>` : "";
+    const sourceInfo=buildSourceList(res,result);
     status.innerHTML = res.grounded
-      ? `검색 완료 · 확인 출처 ${res.sources?.length||0}개 · <b>확인된 값만 자동 입력</b>${official}${reference}${img}`
+      ? `검색 완료 · 검색 출처 <b>${sourceInfo.totalCount}개</b> · 직접 검증 <b>${sourceInfo.usedCount}개</b> · 확인된 값만 자동 입력${official}${reference}${sourceInfo.html}${img}`
       : "검색 근거를 확보하지 못해 값을 자동 입력하지 않았습니다.";
 
     const { error:logError } = await sb.from("ai_lookup_runs").insert({
