@@ -72,14 +72,14 @@ function cardHTML(w){
     <div class="card-body">
       <div class="card-name">${w.name}</div>
       <div class="card-sub">${w.nameKo||""}</div>
-      <div class="card-sub">${w.country||""}${w.region?" · "+w.region:""}</div>
+      <div class="card-sub">${w.bottlingType==="IB" ? (w.bottler||"독립병입") + " · IB" : (w.country||"")+(w.region?" · "+w.region:"")}</div>
       <div class="card-meta"><span class="status-dot">${w.status}</span><span class="score"><span class="star">★</span> ${score ?? "-"}</span></div>
     </div>
   </article>`;
 }
 function filteredWhiskies(){
   const q = ($("#searchInput")?.value || "").trim().toLowerCase();
-  let arr = data.whiskies.filter(w => [w.name,w.nameKo,w.distillery,w.country,w.region].join(" ").toLowerCase().includes(q));
+  let arr = data.whiskies.filter(w => [w.name,w.nameKo,w.distillery,w.bottler,w.seriesName,w.caskNumber,w.batchRelease,w.country,w.region].join(" ").toLowerCase().includes(q));
   const sort = $("#sortSelect")?.value || "recent";
   if(sort==="score") arr.sort((a,b)=>(whiskyScore(b.id)||0)-(whiskyScore(a.id)||0));
   if(sort==="name") arr.sort((a,b)=>a.name.localeCompare(b.name));
@@ -118,14 +118,24 @@ function renderDetail(){
           </div>
           <div class="detail-score"><span class="star">★</span> ${score ?? "-"} <small>/100</small></div>
         </div>
-        <div class="pills"><span class="pill">${w.status}</span><span class="pill gold">${w.age||"미확인"}</span></div>
+        <div class="pills"><span class="pill">${w.status}</span><span class="pill gold">${w.age||"미확인"}</span>${w.bottlingType&&w.bottlingType!=="unknown"?`<span class="pill ${w.bottlingType==="IB"?"ib-pill":"gold"}">${w.bottlingType}</span>`:""}</div>
         <div class="detail-actions">
           <button class="secondary-btn" id="editWhiskyBtn">수정</button>
           <button class="danger-btn" id="deleteWhiskyBtn">삭제</button>
         </div>
         <div class="info-table">
+          ${infoRow("병입 유형",w.bottlingType==="IB"?"독립병입 (IB)":w.bottlingType==="OB"?"공식병입 (OB)":"미확인")}
+          ${w.bottler ? infoRow("병입사",w.bottler) : ""}
           ${infoRow("증류소",w.distillery)}
+          ${w.seriesName ? infoRow("시리즈",w.seriesName) : ""}
           ${infoRow("지역",[w.country,w.region].filter(Boolean).join(" · "))}
+          ${w.vintageYear ? infoRow("빈티지",w.vintageYear) : ""}
+          ${w.bottlingYear ? infoRow("병입연도",w.bottlingYear) : ""}
+          ${w.caskNumber ? infoRow("캐스크 번호",w.caskNumber) : ""}
+          ${w.singleCask!==null && w.singleCask!==undefined ? infoRow("싱글 캐스크",w.singleCask?"예":"아니오") : ""}
+          ${w.bottleCount ? infoRow("병입 수량",w.bottleCount+"병") : ""}
+          ${w.caskStrength!==null && w.caskStrength!==undefined ? infoRow("캐스크 스트렝스",w.caskStrength?"예":"아니오") : ""}
+          ${w.batchRelease ? infoRow("배치 / 릴리즈",w.batchRelease) : ""}
           ${infoRow("숙성연수",w.age)}
           ${infoRow("도수",w.abv ? w.abv+"%" : "-")}
           ${infoRow("캐스크",w.cask)}
@@ -282,7 +292,14 @@ function openWhiskyModal(editId=null){
       country:existing.country||"", region:existing.region||"", age:existing.age||"",
       abv:existing.abv??"", cask:existing.cask||"", marketPrice:existing.marketPrice??"",
       purchasePrice:existing.purchasePrice??"", purchaseDate:existing.purchaseDate||"",
-      status:existing.status||"보유", imageUrl:existing.imageUrl||"",
+      status:existing.status||"보유", bottlingType:existing.bottlingType||"unknown",
+      bottler:existing.bottler||"", seriesName:existing.seriesName||"",
+      vintageYear:existing.vintageYear??"", bottlingYear:existing.bottlingYear??"",
+      caskNumber:existing.caskNumber||"",
+      singleCask:existing.singleCask===true?"true":existing.singleCask===false?"false":"",
+      bottleCount:existing.bottleCount??"",
+      caskStrength:existing.caskStrength===true?"true":existing.caskStrength===false?"false":"",
+      batchRelease:existing.batchRelease||"", imageUrl:existing.imageUrl||"",
       officialProductUrl:existing.officialProductUrl||"", referenceUrl:existing.referenceUrl||"",
       sourceName:existing.sourceName||""
     };
@@ -302,6 +319,14 @@ function openWhiskyModal(editId=null){
       marketPrice:Number(f.get("marketPrice"))||null,
       purchasePrice:Number(f.get("purchasePrice"))||null,
       purchaseDate:f.get("purchaseDate"), status:f.get("status"),
+      bottlingType:f.get("bottlingType")||"unknown",
+      bottler:(f.get("bottler")||"").trim(), seriesName:(f.get("seriesName")||"").trim(),
+      vintageYear:Number(f.get("vintageYear"))||null, bottlingYear:Number(f.get("bottlingYear"))||null,
+      caskNumber:(f.get("caskNumber")||"").trim(),
+      singleCask:f.get("singleCask")===""?null:f.get("singleCask")==="true",
+      bottleCount:Number(f.get("bottleCount"))||null,
+      caskStrength:f.get("caskStrength")===""?null:f.get("caskStrength")==="true",
+      batchRelease:(f.get("batchRelease")||"").trim(),
       imageUrl:f.get("imageUrl")||"", officialProductUrl:f.get("officialProductUrl")||"",
       referenceUrl:f.get("referenceUrl")||"", sourceName:f.get("sourceName")||"",
       visual:existing?.visual||"amber"
