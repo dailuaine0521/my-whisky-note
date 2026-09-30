@@ -143,6 +143,11 @@ function whiskyToDb(w){
     purchase_price:w.purchasePrice || null,
     purchase_date:w.purchaseDate || null,
     status:w.status || "보유",
+    image_url:w.imageUrl || null,
+    official_product_url:w.officialProductUrl || null,
+    reference_url:w.referenceUrl || null,
+    source_name:w.sourceName || null,
+    source_checked_at:w.sourceCheckedAt || null,
     updated_at:new Date().toISOString()
   };
 }
@@ -183,6 +188,11 @@ function dbToWhisky(w){
     purchasePrice:w.purchase_price == null ? null : Number(w.purchase_price),
     purchaseDate:w.purchase_date || "",
     status:w.status || "보유",
+    imageUrl:w.image_url || "",
+    officialProductUrl:w.official_product_url || "",
+    referenceUrl:w.reference_url || "",
+    sourceName:w.source_name || "",
+    sourceCheckedAt:w.source_checked_at || "",
     visual:"amber"
   };
 }
@@ -340,7 +350,11 @@ async function runWhiskyLookup(form){
       region: verifiedValue(f.region),
       age: verifiedValue(f.is_nas) === true ? "NAS" : verifiedValue(f.age_years),
       abv: verifiedValue(f.abv),
-      cask: verifiedValue(f.cask)
+      cask: verifiedValue(f.cask),
+      imageUrl: res.image_url || "",
+      officialProductUrl: result.official_product_url || "",
+      referenceUrl: result.reference_url || "",
+      sourceName: result.source_name || (result.official_product_url ? "Official source" : "")
     };
 
     Object.entries(values).forEach(([key,val])=>{
@@ -353,8 +367,11 @@ async function runWhiskyLookup(form){
     const krw = prices.find(p=>p.currency==="KRW");
     if (krw && form.elements.marketPrice) form.elements.marketPrice.value = Math.round(krw.price);
 
+    const img = res.image_url ? `<div class="ai-image-preview"><img src="${res.image_url}" alt="제품 이미지" referrerpolicy="no-referrer"></div>` : "";
+    const official = result.official_product_url ? ` · <a href="${result.official_product_url}" target="_blank" rel="noopener">공식 출처</a>` : "";
+    const reference = result.reference_url ? ` · <a href="${result.reference_url}" target="_blank" rel="noopener">Whiskybase/보조자료</a>` : "";
     status.innerHTML = res.grounded
-      ? `검색 완료 · 확인 출처 ${res.sources?.length||0}개 · <b>확인된 값만 자동 입력</b>`
+      ? `검색 완료 · 확인 출처 ${res.sources?.length||0}개 · <b>확인된 값만 자동 입력</b>${official}${reference}${img}`
       : "검색 근거를 확보하지 못해 값을 자동 입력하지 않았습니다.";
 
     const { error:logError } = await sb.from("ai_lookup_runs").insert({
@@ -368,11 +385,35 @@ async function runWhiskyLookup(form){
     if (logError) console.warn(logError);
   } catch(e) {
     console.error(e);
-    status.textContent = "AI 검색 실패: " + (e.message || "알 수 없는 오류");
+    let message = e.message || "알 수 없는 오류";
+    try {
+      if (e.context && typeof e.context.json === "function") {
+        const body = await e.context.json();
+        message = body?.detail || body?.error || message;
+      }
+    } catch {}
+    status.textContent = "AI 검색 실패: " + message;
   } finally {
     btn.disabled=false;
   }
 }
+
+window.cloudDeleteWhisky = async function(id){
+  if (!id) return;
+  if (cloudUser) {
+    const { error } = await sb.from("whiskies").delete().eq("id",id).eq("user_id",cloudUser.id);
+    if (error) {
+      console.error(error);
+      alert("클라우드 삭제 실패: " + error.message);
+      return;
+    }
+  }
+  data.tastings = data.tastings.filter(t=>t.whiskyId!==id);
+  data.whiskies = data.whiskies.filter(w=>w.id!==id);
+  selectedWhiskyId = data.whiskies[0]?.id || null;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  renderAll();
+};
 
 document.addEventListener("click", e=>{
   if (e.target.id==="signInBtn") signIn();
