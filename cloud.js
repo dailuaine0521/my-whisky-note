@@ -581,11 +581,12 @@ async function runWhiskyLookup(form){
       ? `<div class="ai-resolved-query">해외 검색명: <b>${escapeHtml(res.resolved_query_en)}</b></div>`
       : "";
     const hintLabel=res?.bottling_hint==="IB"?"IB":res?.bottling_hint==="OB"?"OB":"자동 판별";
+    const strategyLabel=res?.search_strategy==="domestic-first"?"국내 우선 → 해외 교차검증":"국내·해외 균형 검색";
     const hintInfo=`<div class="ai-resolved-query">검색 힌트: <b>${escapeHtml(hintLabel)}</b>${
       res?.bottling_hint_conflict
         ? ' · <b>검증 결과와 충돌하여 병입 유형은 자동 확정하지 않음</b>'
         : ''
-    }</div>`;
+    }<br>검색 경로: <b>${escapeHtml(strategyLabel)}</b></div>`;
     const imagePicker=buildImageCandidatePicker(res);
     const autoImageText=res.image_auto_selected && res.image_url
       ? '<div class="ai-auto-image-note">사진 신뢰도가 높아 1장을 자동 선택했습니다. 아래 후보에서 변경할 수 있습니다.</div>'
