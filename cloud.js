@@ -462,6 +462,44 @@ function buildSourceList(res,result){
   };
 }
 
+function buildImageCandidatePicker(res){
+  const candidates=(Array.isArray(res?.image_candidates)?res.image_candidates:[])
+    .filter(c=>safeHttpUrl(c?.url))
+    .slice(0,6);
+  if(!candidates.length) return {html:"",candidates:[]};
+
+  const cards=candidates.map((c,i)=>{
+    const url=safeHttpUrl(c.url);
+    const source=safeHttpUrl(c.source_url);
+    const title=escapeHtml(c.source_title || sourceDomain(source) || "출처");
+    const domain=escapeHtml(c.source_domain || sourceDomain(source));
+    const confidence=c.confidence==="high"?"높음":c.confidence==="medium"?"보통":"낮음";
+    const selected=!!res.image_url && safeHttpUrl(res.image_url)===url;
+    return `<button type="button" class="ai-image-option ${selected?"selected":""}" data-ai-image-choice="${i}">
+      <span class="ai-image-frame">
+        <img src="${escapeHtml(url)}" alt="제품 사진 후보 ${i+1}" loading="lazy" referrerpolicy="no-referrer"
+             onerror="this.closest('.ai-image-option').classList.add('image-failed')">
+        <span class="ai-image-broken">이미지 불러오기 실패</span>
+      </span>
+      <span class="ai-image-source">${title}</span>
+      <span class="ai-image-meta">${domain} · 신뢰도 ${confidence}</span>
+      ${selected?'<span class="ai-image-selected-label">자동 선택됨</span>':""}
+    </button>`;
+  }).join("");
+
+  return {
+    candidates,
+    html:`<div class="ai-image-picker">
+      <div class="ai-image-picker-head">
+        <b>제품 사진 후보 ${candidates.length}장</b>
+        <span>원하는 병 사진을 눌러 대표사진으로 선택하세요.</span>
+      </div>
+      <div class="ai-image-grid">${cards}</div>
+      <div class="ai-image-picker-note">공식/검증 출처의 상품 페이지에서 찾은 후보만 표시합니다. 정확한 병이 아니면 선택하지 않아도 됩니다.</div>
+    </div>`
+  };
+}
+
 async function runWhiskyLookup(form){
   if (!cloudUser) return alert("AI 검색은 로그인 후 사용할 수 있습니다.");
   const name = form.elements.name.value.trim();
@@ -517,8 +555,6 @@ async function runWhiskyLookup(form){
     const krw = prices.find(p=>p.currency==="KRW");
     if (krw && form.elements.marketPrice) form.elements.marketPrice.value = Math.round(krw.price);
 
-    const imgUrl=safeHttpUrl(res.image_url);
-    const img = imgUrl ? `<div class="ai-image-preview"><img src="${escapeHtml(imgUrl)}" alt="제품 이미지" referrerpolicy="no-referrer"></div>` : "";
     const officialUrl=safeHttpUrl(result.official_product_url);
     const referenceUrl=safeHttpUrl(result.reference_url || res.reference_url);
     const official = officialUrl ? ` · <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">공식 출처</a>` : "";
@@ -527,9 +563,39 @@ async function runWhiskyLookup(form){
     const resolvedSearch = res.resolved_query_en
       ? `<div class="ai-resolved-query">해외 검색명: <b>${escapeHtml(res.resolved_query_en)}</b></div>`
       : "";
+    const imagePicker=buildImageCandidatePicker(res);
+    const autoImageText=res.image_auto_selected && res.image_url
+      ? '<div class="ai-auto-image-note">사진 신뢰도가 높아 1장을 자동 선택했습니다. 아래 후보에서 변경할 수 있습니다.</div>'
+      : (imagePicker.candidates.length
+          ? '<div class="ai-auto-image-note">사진은 자동 확정하지 않았습니다. 아래 후보 중 정확한 병을 선택해 주세요.</div>'
+          : '<div class="ai-auto-image-note">정확한 제품 사진 후보를 확보하지 못했습니다. 직접 사진 업로드를 사용할 수 있습니다.</div>');
     status.innerHTML = res.grounded
-      ? `검색 완료 · 검색 출처 <b>${sourceInfo.totalCount}개</b> · 직접 검증 <b>${sourceInfo.usedCount}개</b> · 확인된 값만 자동 입력${official}${reference}${resolvedSearch}${sourceInfo.html}${img}`
+      ? `검색 완료 · 검색 출처 <b>${sourceInfo.totalCount}개</b> · 직접 검증 <b>${sourceInfo.usedCount}개</b> · 확인된 값만 자동 입력${official}${reference}${resolvedSearch}${autoImageText}${imagePicker.html}${sourceInfo.html}`
       : "검색 근거를 확보하지 못해 값을 자동 입력하지 않았습니다.";
+
+    status.querySelectorAll("[data-ai-image-choice]").forEach(button=>{
+      button.addEventListener("click",()=>{
+        const idx=Number(button.dataset.aiImageChoice);
+        const candidate=imagePicker.candidates[idx];
+        const chosen=safeHttpUrl(candidate?.url);
+        if(!chosen) return;
+
+        if(form.elements.imagePath?.value){
+          alert("직접 업로드한 병 사진이 이미 있어 그 사진이 우선 표시됩니다. AI 후보를 사용하려면 직접 업로드 사진을 제거한 뒤 선택해 주세요.");
+          return;
+        }
+
+        if(form.elements.officialImageUrl) form.elements.officialImageUrl.value=chosen;
+        if(form.elements.imageUrl) form.elements.imageUrl.value=chosen;
+        status.querySelectorAll(".ai-image-option").forEach(x=>x.classList.remove("selected"));
+        button.classList.add("selected");
+        status.querySelectorAll(".ai-image-selected-label").forEach(x=>x.remove());
+        button.insertAdjacentHTML("beforeend",'<span class="ai-image-selected-label">대표사진으로 선택됨</span>');
+
+        const preview=form.querySelector("[data-upload-preview]");
+        if(preview) preview.innerHTML=`<img src="${escapeHtml(chosen)}" alt="선택한 제품 사진" referrerpolicy="no-referrer">`;
+      });
+    });
 
     const { error:logError } = await sb.from("ai_lookup_runs").insert({
       user_id:cloudUser.id,
