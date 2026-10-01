@@ -360,3 +360,29 @@ button{cursor:pointer}
   .trend-row{grid-template-columns:74px 1fr 30px}
   .trend-row small{grid-column:2/-1}
 }
+
+.ai-resolved-query{margin-top:7px;padding:7px 9px;border-radius:8px;background:#f1eadf;color:#665644}
+.ai-auto-image-note{margin-top:8px;color:#756657}
+.ai-image-picker{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.ai-image-picker-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:8px}
+.ai-image-picker-head b{font-size:12px;color:#4c3825}
+.ai-image-picker-head span{font-size:10px;color:var(--muted)}
+.ai-image-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ai-image-option{position:relative;border:1px solid #ddcfbd;background:#fffaf2;border-radius:10px;padding:7px;text-align:left;color:var(--ink);min-width:0}
+.ai-image-option:hover{border-color:#ba8436;box-shadow:0 5px 14px rgba(60,40,20,.08)}
+.ai-image-option.selected{border-color:#a87429;box-shadow:0 0 0 2px rgba(184,127,39,.18)}
+.ai-image-frame{height:145px;border-radius:8px;background:#f0e9dd;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.ai-image-frame img{display:block;max-width:100%;max-height:100%;object-fit:contain}
+.ai-image-broken{display:none;padding:12px;text-align:center;color:var(--muted);font-size:10px}
+.ai-image-option.image-failed .ai-image-frame img{display:none}
+.ai-image-option.image-failed .ai-image-broken{display:block}
+.ai-image-source{display:block;margin-top:6px;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-image-meta{display:block;margin-top:2px;font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-image-selected-label{display:inline-block;margin-top:5px;padding:2px 6px;border-radius:999px;background:#e9eedf;color:#56704a;font-size:9px;font-weight:700}
+.ai-image-picker-note{margin-top:7px;font-size:9px;line-height:1.5;color:#8b7968}
+@media(max-width:760px){
+  .ai-image-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ai-image-picker-head{display:block}
+  .ai-image-picker-head span{display:block;margin-top:3px}
+  .ai-image-frame{height:135px}
+}
