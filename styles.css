@@ -51,24 +51,37 @@ button{cursor:pointer}
   color:#cdbfae;background:transparent;text-align:left;
 }
 .nav-item:hover,.nav-item.active{background:#59432f;color:#fff1d8}
-.sidebar-footer{margin-top:auto}
-.slogan-card{
-  margin-top:18px;
-  min-height:180px;
-  padding:22px 18px;
-  border-radius:14px;
-  background:
-    linear-gradient(180deg,rgba(30,20,13,.05),rgba(30,20,13,.72)),
-    radial-gradient(circle at 65% 15%,#a06732 0,#533b26 38%,#281b13 70%);
-  border:1px solid rgba(255,255,255,.08);
-  display:flex;flex-direction:column;justify-content:flex-end
+.sidebar-signature{
+  margin-top:auto;
+  padding:30px 11px 18px;
 }
-.slogan-card p{
+.sidebar-signature-label{
+  display:block;
+  font-family:"Playfair Display",serif;
+  font-size:9px;
+  letter-spacing:2.2px;
+  color:#9e8669;
+}
+.sidebar-signature-line{
+  display:block;
+  width:28px;
+  height:1px;
+  margin:11px 0 12px;
+  background:linear-gradient(90deg,#d0a057,rgba(208,160,87,0));
+}
+.sidebar-signature p{
   margin:0;
-  color:#f7e8d4;
-  line-height:1.8;
+  color:#e9d8c2;
   font-family:"Playfair Display","Noto Sans KR",serif;
-  font-weight:600
+  font-size:13px;
+  font-weight:600;
+  line-height:1.75;
+  letter-spacing:-.15px;
+}
+.sidebar-footer{
+  margin-top:0;
+  padding-top:4px;
+  border-top:1px solid rgba(255,255,255,.055);
 }
 .main{margin-left:240px;width:calc(100% - 240px);min-height:100vh;padding:22px}
 .view{display:none}
