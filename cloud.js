@@ -62,7 +62,19 @@ function injectCloudUI(){
   if (formTpl && !formTpl.content.querySelector("[data-ai-lookup]")) {
     const nameLabel = formTpl.content.querySelector('input[name="name"]')?.closest("label");
     if (nameLabel) {
-      nameLabel.insertAdjacentHTML("beforeend", '<button type="button" class="secondary-btn inline-ai-btn" data-ai-lookup>AI로 정보 찾기</button><div class="ai-lookup-status" data-ai-status></div>');
+      nameLabel.insertAdjacentHTML("beforeend", `
+        <button type="button" class="secondary-btn inline-ai-btn" data-ai-lookup>AI로 정보 찾기</button>
+        <div class="ai-bottling-hint-wrap">
+          <span class="muted">검색 힌트 · 병입 유형</span>
+          <div class="segmented ai-bottling-hint" data-ai-bottling-hints>
+            <button type="button" class="active" data-ai-bottling-hint="auto">자동 판별</button>
+            <button type="button" data-ai-bottling-hint="OB">OB</button>
+            <button type="button" data-ai-bottling-hint="IB">IB</button>
+          </div>
+          <span class="muted">검색 방향만 돕고, 최종 병입 유형은 출처로 다시 검증합니다.</span>
+        </div>
+        <div class="ai-lookup-status" data-ai-status></div>
+      `);
     }
   }
 }
@@ -510,7 +522,12 @@ async function runWhiskyLookup(form){
   status.textContent = "공식/신뢰 출처를 검색하고 있습니다…";
 
   try {
-    const { data:res, error } = await sb.functions.invoke(WHISKY_LOOKUP_FUNCTION,{body:{query:name}});
+    const hintButton=form.querySelector("[data-ai-bottling-hint].active");
+    const bottlingHint=hintButton?.dataset?.aiBottlingHint || "auto";
+    const { data:res, error } = await sb.functions.invoke(
+      WHISKY_LOOKUP_FUNCTION,
+      {body:{query:name,bottling_hint:bottlingHint}}
+    );
     if (error) throw error;
     if (res?.error) throw new Error(res.error + (res.detail ? ": "+res.detail : ""));
 
@@ -518,7 +535,7 @@ async function runWhiskyLookup(form){
     const f = result.fields || {};
     const values = {
       nameKo: result.name_ko || "",
-      bottlingType: verifiedValue(f.bottling_type) || "unknown",
+      bottlingType: res?.bottling_hint_conflict ? "unknown" : (verifiedValue(f.bottling_type) || "unknown"),
       bottler: verifiedValue(f.bottler),
       distillery: verifiedValue(f.distillery),
       seriesName: verifiedValue(f.series_name),
@@ -563,6 +580,12 @@ async function runWhiskyLookup(form){
     const resolvedSearch = res.resolved_query_en
       ? `<div class="ai-resolved-query">해외 검색명: <b>${escapeHtml(res.resolved_query_en)}</b></div>`
       : "";
+    const hintLabel=res?.bottling_hint==="IB"?"IB":res?.bottling_hint==="OB"?"OB":"자동 판별";
+    const hintInfo=`<div class="ai-resolved-query">검색 힌트: <b>${escapeHtml(hintLabel)}</b>${
+      res?.bottling_hint_conflict
+        ? ' · <b>검증 결과와 충돌하여 병입 유형은 자동 확정하지 않음</b>'
+        : ''
+    }</div>`;
     const imagePicker=buildImageCandidatePicker(res);
     const autoImageText=res.image_auto_selected && res.image_url
       ? '<div class="ai-auto-image-note">사진 신뢰도가 높아 1장을 자동 선택했습니다. 아래 후보에서 변경할 수 있습니다.</div>'
@@ -570,7 +593,7 @@ async function runWhiskyLookup(form){
           ? '<div class="ai-auto-image-note">사진은 자동 확정하지 않았습니다. 아래 후보 중 정확한 병을 선택해 주세요.</div>'
           : '<div class="ai-auto-image-note">정확한 제품 사진 후보를 확보하지 못했습니다. 직접 사진 업로드를 사용할 수 있습니다.</div>');
     status.innerHTML = res.grounded
-      ? `검색 완료 · 검색 출처 <b>${sourceInfo.totalCount}개</b> · 직접 검증 <b>${sourceInfo.usedCount}개</b> · 확인된 값만 자동 입력${official}${reference}${resolvedSearch}${autoImageText}${imagePicker.html}${sourceInfo.html}`
+      ? `검색 완료 · 검색 출처 <b>${sourceInfo.totalCount}개</b> · 직접 검증 <b>${sourceInfo.usedCount}개</b> · 확인된 값만 자동 입력${official}${reference}${hintInfo}${resolvedSearch}${autoImageText}${imagePicker.html}${sourceInfo.html}`
       : "검색 근거를 확보하지 못해 값을 자동 입력하지 않았습니다.";
 
     status.querySelectorAll("[data-ai-image-choice]").forEach(button=>{
@@ -653,6 +676,11 @@ document.addEventListener("click", e=>{
   if (e.target.id==="syncNowBtn") pushCloud();
   if (e.target.id==="pullCloudBtn") {
     if (confirm("현재 브라우저 데이터를 클라우드 데이터로 교체할까요?")) pullCloud();
+  }
+  if (e.target.matches("[data-ai-bottling-hint]")) {
+    const group=e.target.closest("[data-ai-bottling-hints]");
+    group?.querySelectorAll("[data-ai-bottling-hint]").forEach(btn=>btn.classList.remove("active"));
+    e.target.classList.add("active");
   }
   if (e.target.matches("[data-ai-lookup]")) {
     const form=e.target.closest("form");
