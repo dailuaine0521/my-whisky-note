@@ -524,8 +524,11 @@ async function runWhiskyLookup(form){
     const official = officialUrl ? ` · <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">공식 출처</a>` : "";
     const reference = referenceUrl ? ` · <a href="${escapeHtml(referenceUrl)}" target="_blank" rel="noopener noreferrer">Whiskybase 참고 검색</a>` : "";
     const sourceInfo=buildSourceList(res,result);
+    const resolvedSearch = res.resolved_query_en
+      ? `<div class="ai-resolved-query">해외 검색명: <b>${escapeHtml(res.resolved_query_en)}</b></div>`
+      : "";
     status.innerHTML = res.grounded
-      ? `검색 완료 · 검색 출처 <b>${sourceInfo.totalCount}개</b> · 직접 검증 <b>${sourceInfo.usedCount}개</b> · 확인된 값만 자동 입력${official}${reference}${sourceInfo.html}${img}`
+      ? `검색 완료 · 검색 출처 <b>${sourceInfo.totalCount}개</b> · 직접 검증 <b>${sourceInfo.usedCount}개</b> · 확인된 값만 자동 입력${official}${reference}${resolvedSearch}${sourceInfo.html}${img}`
       : "검색 근거를 확보하지 못해 값을 자동 입력하지 않았습니다.";
 
     const { error:logError } = await sb.from("ai_lookup_runs").insert({
