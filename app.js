@@ -166,8 +166,23 @@ async function quickToggleWhisky(id,key){
   if(typeof window.cloudQuickUpdateWhisky==="function"){
     try{
       await window.cloudQuickUpdateWhisky(w);
+
+      // An initial cloud pull may have replaced the local data object while
+      // this quick update was waiting. Re-apply the saved quick fields to the
+      // currently active copy so the button state stays visually consistent.
+      const current=data.whiskies.find(x=>x.id===id);
+      if(current){
+        current.status=w.status;
+        current.remainingPercent=w.remainingPercent;
+        current.bourbonCask=w.bourbonCask;
+        current.sherryCask=w.sherryCask;
+        current.peated=w.peated;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      renderAll();
     }catch(err){
-      Object.assign(w,before);
+      const current=data.whiskies.find(x=>x.id===id) || w;
+      Object.assign(current,before);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       renderAll();
       alert("빠른 변경 저장 실패: "+(err?.message||err));
