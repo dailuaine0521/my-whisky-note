@@ -130,9 +130,17 @@ function renderGrid(){
   $("#whiskyGrid").innerHTML = arr.length ? arr.map(cardHTML).join("") : `<div class="empty">검색 결과가 없습니다.</div>`;
 }
 function infoRow(label,value){return `<div class="info-row"><span>${label}</span><span>${value||"-"}</span></div>`}
-function quickToggleWhisky(id,key){
+async function quickToggleWhisky(id,key){
   const w=data.whiskies.find(x=>x.id===id);
   if(!w) return;
+
+  const before={
+    status:w.status,
+    remainingPercent:w.remainingPercent,
+    bourbonCask:w.bourbonCask,
+    sherryCask:w.sherryCask,
+    peated:w.peated
+  };
 
   if(key==="complete"){
     if(w.status==="완병"){
@@ -143,17 +151,30 @@ function quickToggleWhisky(id,key){
       w.remainingPercent=0;
     }
   }else if(key==="sherry"){
-    const current=caskBuckets(w).sherry;
-    w.sherryCask=!current;
+    w.sherryCask=!caskBuckets(w).sherry;
   }else if(key==="bourbon"){
-    const current=caskBuckets(w).bourbon;
-    w.bourbonCask=!current;
+    w.bourbonCask=!caskBuckets(w).bourbon;
   }else if(key==="peat"){
-    const current=isPeatedWhisky(w);
-    w.peated=!current;
+    w.peated=!isPeatedWhisky(w);
   }
 
-  save();
+  // Reflect immediately in the UI.
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  renderAll();
+
+  // Persist the one changed bottle immediately when cloud is connected.
+  if(typeof window.cloudQuickUpdateWhisky==="function"){
+    try{
+      await window.cloudQuickUpdateWhisky(w);
+    }catch(err){
+      Object.assign(w,before);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      renderAll();
+      alert("빠른 변경 저장 실패: "+(err?.message||err));
+    }
+  }else{
+    save();
+  }
 }
 
 function renderDetail(){
@@ -502,6 +523,14 @@ $$("[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.vi
 $$("[data-view-target]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.viewTarget)));
 
 document.addEventListener("click",e=>{
+  const quickBtn=e.target.closest("[data-quick-whisky]");
+  if(quickBtn){
+    e.preventDefault();
+    e.stopPropagation();
+    quickToggleWhisky(selectedWhiskyId,quickBtn.dataset.quickWhisky);
+    return;
+  }
+
   const card=e.target.closest("[data-whisky]");
   if(card){
     selectedWhiskyId=card.dataset.whisky;
