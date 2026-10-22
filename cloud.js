@@ -150,6 +150,8 @@ function whiskyToDb(w){
     distillery:w.distillery || null,
     country:w.country || null,
     region:w.region || null,
+    whisky_type:w.whiskyType || null,
+    peated:w.peated ?? null,
     age_years:Number.isFinite(ageNum) ? ageNum : null,
     is_nas:nas,
     abv:w.abv || null,
@@ -211,6 +213,8 @@ function dbToWhisky(w){
     distillery:w.distillery || "",
     country:w.country || "",
     region:w.region || "",
+    whiskyType:normalizeWhiskyTypeValue(w.whisky_type),
+    peated:w.peated ?? null,
     age:w.is_nas ? "NAS" : (w.age_years ? String(w.age_years) : ""),
     abv:w.abv == null ? null : Number(w.abv),
     cask:w.cask || "",
@@ -406,6 +410,14 @@ async function signOut(){
   await sb.auth.signOut();
 }
 
+function normalizeWhiskyTypeValue(value){
+  const s=String(value||"").trim();
+  if(!s) return "";
+  if(/single\s*malt|싱글\s*몰트|싱글몰트/i.test(s)) return "Single Malt";
+  if(/blended|블렌디드/i.test(s)) return "Blended";
+  return "Other";
+}
+
 function verifiedValue(field){
   return field?.status === "verified" ? field.value : null;
 }
@@ -541,6 +553,8 @@ async function runWhiskyLookup(form){
       seriesName: verifiedValue(f.series_name),
       country: verifiedValue(f.country),
       region: verifiedValue(f.region),
+      whiskyType: normalizeWhiskyTypeValue(verifiedValue(f.whisky_type)),
+      peated: verifiedValue(f.peated),
       vintageYear: verifiedValue(f.vintage_year),
       bottlingYear: verifiedValue(f.bottling_year),
       age: verifiedValue(f.is_nas) === true ? "NAS" : verifiedValue(f.age_years),
