@@ -130,7 +130,7 @@ function renderGrid(){
   $("#whiskyGrid").innerHTML = arr.length ? arr.map(cardHTML).join("") : `<div class="empty">검색 결과가 없습니다.</div>`;
 }
 function infoRow(label,value){return `<div class="info-row"><span>${label}</span><span>${value||"-"}</span></div>`}
-async function quickToggleWhisky(id,key){
+async async function quickToggleWhisky(id,key){
   const w=data.whiskies.find(x=>x.id===id);
   if(!w) return;
 
@@ -151,9 +151,17 @@ async function quickToggleWhisky(id,key){
       w.remainingPercent=0;
     }
   }else if(key==="sherry"){
-    w.sherryCask=!caskBuckets(w).sherry;
+    if(w.sherryCask===null||w.sherryCask===undefined){
+      w.sherryCask=true;
+    }else{
+      w.sherryCask=!w.sherryCask;
+    }
   }else if(key==="bourbon"){
-    w.bourbonCask=!caskBuckets(w).bourbon;
+    if(w.bourbonCask===null||w.bourbonCask===undefined){
+      w.bourbonCask=true;
+    }else{
+      w.bourbonCask=!w.bourbonCask;
+    }
   }else if(key==="peat"){
     w.peated=!isPeatedWhisky(w);
   }
@@ -230,8 +238,8 @@ function renderDetail(){
         <div class="detail-actions">
           <div class="quick-whisky-actions" aria-label="빠른 분류">
             <button type="button" class="quick-tag-btn ${w.status==="완병"?"active complete":""}" data-quick-whisky="complete">완병</button>
-            <button type="button" class="quick-tag-btn ${caskBuckets(w).sherry?"active":""}" data-quick-whisky="sherry">쉐리</button>
-            <button type="button" class="quick-tag-btn ${caskBuckets(w).bourbon?"active":""}" data-quick-whisky="bourbon">버번</button>
+            <button type="button" class="quick-tag-btn ${caskButtonState(w,"sherry").active?"active":""} ${caskButtonState(w,"sherry").inferred?"inferred":""}" data-quick-whisky="sherry">쉐리${caskButtonState(w,"sherry").inferred?" · 자동":""}</button>
+            <button type="button" class="quick-tag-btn ${caskButtonState(w,"bourbon").active?"active":""} ${caskButtonState(w,"bourbon").inferred?"inferred":""}" data-quick-whisky="bourbon">버번${caskButtonState(w,"bourbon").inferred?" · 자동":""}</button>
             <button type="button" class="quick-tag-btn ${isPeatedWhisky(w)?"active peat":""}" data-quick-whisky="peat">피트</button>
           </div>
           <div class="detail-manage-actions">
@@ -357,6 +365,15 @@ function caskBuckets(w){
     sherry:w?.sherryCask===null||w?.sherryCask===undefined ? inferredSherry : !!w.sherryCask
   };
 }
+function caskButtonState(w,key){
+  const explicit=key==="sherry" ? w?.sherryCask : w?.bourbonCask;
+  const effective=caskBuckets(w)[key];
+  return {
+    active:effective,
+    inferred:(explicit===null||explicit===undefined) && effective
+  };
+}
+
 function isPeatedWhisky(w){
   if(w?.peated===true) return true;
   if(w?.peated===false) return false;
@@ -501,7 +518,7 @@ function renderStats(){
           </span>
         </button>
       </div>
-      <p class="holding-note">버번·쉐리를 함께 사용한 병은 두 캐스크 항목에 모두 포함됩니다.</p>
+      <p class="holding-note">버번·쉐리를 함께 사용한 병은 두 캐스크 항목에 모두 포함됩니다. 캐스크 정보로 자동 판정된 병도 집계됩니다.</p>
     </div>
     <div class="stats-grid">
       <div class="panel stats-card" style="grid-column:span 2"><h3>지역별 평균 점수</h3>
