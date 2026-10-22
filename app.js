@@ -237,10 +237,19 @@ function renderDetail(){
         <div class="pills"><span class="pill">${w.status}</span><span class="pill gold">${w.age||"미확인"}</span>${w.bottlingType&&w.bottlingType!=="unknown"?`<span class="pill ${w.bottlingType==="IB"?"ib-pill":"gold"}">${w.bottlingType}</span>`:""}${w.remainingPercent!==null&&w.remainingPercent!==undefined?`<span class="pill">잔량 ${w.remainingPercent}%</span>`:""}</div>
         <div class="detail-actions">
           <div class="quick-whisky-actions" aria-label="빠른 분류">
-            <button type="button" class="quick-tag-btn ${w.status==="완병"?"active complete":""}" data-quick-whisky="complete">완병</button>
-            <button type="button" class="quick-tag-btn ${caskButtonState(w,"sherry").active?"active":""} ${caskButtonState(w,"sherry").inferred?"inferred":""}" data-quick-whisky="sherry">쉐리${caskButtonState(w,"sherry").inferred?" · 자동":""}</button>
-            <button type="button" class="quick-tag-btn ${caskButtonState(w,"bourbon").active?"active":""} ${caskButtonState(w,"bourbon").inferred?"inferred":""}" data-quick-whisky="bourbon">버번${caskButtonState(w,"bourbon").inferred?" · 자동":""}</button>
-            <button type="button" class="quick-tag-btn ${isPeatedWhisky(w)?"active peat":""}" data-quick-whisky="peat">피트</button>
+            <div class="quick-action-group">
+              <span class="quick-action-label">상태</span>
+              <button type="button" class="quick-tag-btn ${w.status==="완병"?"active complete":""}" data-quick-whisky="complete">완병</button>
+            </div>
+            <div class="quick-action-group">
+              <span class="quick-action-label">캐스크</span>
+              <button type="button" class="quick-tag-btn ${caskButtonState(w,"sherry").active?"active":""} ${caskButtonState(w,"sherry").inferred?"inferred":""}" data-quick-whisky="sherry">쉐리${caskButtonState(w,"sherry").inferred?" · 자동":""}</button>
+              <button type="button" class="quick-tag-btn ${caskButtonState(w,"bourbon").active?"active":""} ${caskButtonState(w,"bourbon").inferred?"inferred":""}" data-quick-whisky="bourbon">버번${caskButtonState(w,"bourbon").inferred?" · 자동":""}</button>
+            </div>
+            <div class="quick-action-group">
+              <span class="quick-action-label">피트</span>
+              <button type="button" class="quick-tag-btn ${isPeatedWhisky(w)?"active peat":""}" data-quick-whisky="peat">피트</button>
+            </div>
           </div>
           <div class="detail-manage-actions">
             <button class="secondary-btn" id="editWhiskyBtn">수정</button>
@@ -388,30 +397,67 @@ function isPeatedWhisky(w){
     .toLowerCase();
   return /피트|\bpeat(?:ed|y)?\b/.test(notes);
 }
+function caskCategory(w){
+  const cask=caskBuckets(w);
+  if(cask.sherry && cask.bourbon) return "cask_mixed";
+  if(cask.sherry) return "cask_sherry";
+  if(cask.bourbon) return "cask_bourbon";
+  if(String(w?.cask||"").trim()) return "cask_other";
+  return "cask_unclassified";
+}
+
+function caskCategoryLabel(category){
+  return ({
+    cask_sherry:"쉐리 캐스크",
+    cask_bourbon:"버번 캐스크",
+    cask_mixed:"쉐리 + 버번",
+    cask_other:"기타 캐스크",
+    cask_unclassified:"캐스크 미분류"
+  })[category] || "캐스크";
+}
+
 function holdingBreakdown(){
   const held=data.whiskies.filter(w=>["보유","개봉"].includes(w.status));
-  let singleMalt=0, blended=0, otherType=0, bourbon=0, sherry=0, bourbonPeat=0, sherryPeat=0;
+  let singleMalt=0, blended=0, otherType=0;
+  let caskSherry=0, caskBourbon=0, caskMixed=0, caskOther=0, caskUnclassified=0;
+  let peated=0;
+
   held.forEach(w=>{
     const type=normalizeWhiskyCategory(w.whiskyType);
     if(type==="single_malt") singleMalt++;
     else if(type==="blended") blended++;
     else otherType++;
 
-    const cask=caskBuckets(w);
-    const peated=isPeatedWhisky(w);
-    if(cask.bourbon){ bourbon++; if(peated) bourbonPeat++; }
-    if(cask.sherry){ sherry++; if(peated) sherryPeat++; }
+    const category=caskCategory(w);
+    if(category==="cask_sherry") caskSherry++;
+    else if(category==="cask_bourbon") caskBourbon++;
+    else if(category==="cask_mixed") caskMixed++;
+    else if(category==="cask_other") caskOther++;
+    else caskUnclassified++;
+
+    if(isPeatedWhisky(w)) peated++;
   });
-  return {total:held.length,singleMalt,blended,otherType,bourbon,sherry,bourbonPeat,sherryPeat};
+
+  return {
+    total:held.length,
+    singleMalt,blended,otherType,
+    caskSherry,caskBourbon,caskMixed,caskOther,caskUnclassified,
+    peated
+  };
 }
 
 function holdingCategoryItems(category){
   const held=data.whiskies.filter(w=>["보유","개봉"].includes(w.status));
+
   if(category==="single_malt") return held.filter(w=>normalizeWhiskyCategory(w.whiskyType)==="single_malt");
   if(category==="blended") return held.filter(w=>normalizeWhiskyCategory(w.whiskyType)==="blended");
-  if(category==="unclassified") return held.filter(w=>!["single_malt","blended"].includes(normalizeWhiskyCategory(w.whiskyType)));
-  if(category==="bourbon") return held.filter(w=>caskBuckets(w).bourbon);
-  if(category==="sherry") return held.filter(w=>caskBuckets(w).sherry);
+  if(category==="type_unclassified") return held.filter(w=>!["single_malt","blended"].includes(normalizeWhiskyCategory(w.whiskyType)));
+
+  if(["cask_sherry","cask_bourbon","cask_mixed","cask_other","cask_unclassified"].includes(category)){
+    return held.filter(w=>caskCategory(w)===category);
+  }
+
+  if(category==="peated") return held.filter(w=>isPeatedWhisky(w));
   return [];
 }
 
@@ -419,9 +465,13 @@ function holdingCategoryLabel(category){
   return ({
     single_malt:"싱글몰트",
     blended:"블렌디드",
-    unclassified:"유형 미분류",
-    bourbon:"버번 캐스크",
-    sherry:"쉐리 캐스크"
+    type_unclassified:"위스키 유형 미분류",
+    cask_sherry:"쉐리 캐스크",
+    cask_bourbon:"버번 캐스크",
+    cask_mixed:"쉐리 + 버번 캐스크",
+    cask_other:"기타 캐스크",
+    cask_unclassified:"캐스크 미분류",
+    peated:"피트 위스키"
   })[category] || "보유 구성";
 }
 
@@ -436,10 +486,10 @@ function openHoldingCategory(category){
     <div class="holding-list-summary">현재 보유 · 개봉 기준 <b>${items.length}병</b></div>
     <div class="holding-drill-list">
       ${items.length ? items.map(w=>{
-        const cask=caskBuckets(w);
+        const category=caskCategory(w);
         const peated=isPeatedWhisky(w);
         const type=normalizeWhiskyCategory(w.whiskyType);
-        const typeLabel=type==="single_malt"?"싱글몰트":type==="blended"?"블렌디드":"미분류";
+        const typeLabel=type==="single_malt"?"싱글몰트":type==="blended"?"블렌디드":"유형 미분류";
         return `<button type="button" class="holding-drill-item" data-holding-whisky="${w.id}">
           <span class="holding-drill-main">
             <b>${w.name}</b>
@@ -447,9 +497,9 @@ function openHoldingCategory(category){
           </span>
           <span class="holding-drill-meta">
             <span>${typeLabel}</span>
+            <span>${caskCategoryLabel(category)}</span>
             ${w.cask?`<span>${w.cask}</span>`:""}
             ${peated?`<span class="peat-count">피트</span>`:""}
-            ${cask.bourbon&&cask.sherry?`<span class="dual-cask-badge">버번 + 쉐리</span>`:""}
           </span>
         </button>`;
       }).join("") : `<div class="empty">해당 항목의 위스키가 없습니다.</div>`}
@@ -485,12 +535,11 @@ function renderStats(){
     <div class="panel holding-breakdown">
       <div class="holding-breakdown-head">
         <div>
-          <h3>보유 구성</h3>
-          <p class="muted">현재 보유 · 개봉 ${holding.total}병 기준 · 카드를 누르면 병 목록을 볼 수 있습니다.</p>
+          <h3>위스키 유형</h3>
+          <p class="muted">현재 보유 · 개봉 ${holding.total}병 기준</p>
         </div>
-        ${holding.otherType ? `<button type="button" class="holding-unclassified" data-holding-category="unclassified">유형 미분류 ${holding.otherType}병</button>` : ""}
       </div>
-      <div class="holding-breakdown-grid">
+      <div class="holding-breakdown-grid holding-type-grid">
         <button type="button" class="holding-metric" data-holding-category="single_malt">
           <span class="holding-metric-label">싱글몰트</span>
           <strong>${holding.singleMalt}<small>병</small></strong>
@@ -501,24 +550,64 @@ function renderStats(){
           <strong>${holding.blended}<small>병</small></strong>
           <span class="holding-open-hint">목록 보기 ›</span>
         </button>
-        <button type="button" class="holding-metric" data-holding-category="bourbon">
-          <span class="holding-metric-label">버번 캐스크</span>
-          <strong>${holding.bourbon}<small>병</small></strong>
-          <span class="holding-metric-foot">
-            ${holding.bourbonPeat ? `<span class="peat-count">피트 ${holding.bourbonPeat}병</span>` : `<span></span>`}
-            <span class="holding-open-hint">목록 보기 ›</span>
-          </span>
-        </button>
-        <button type="button" class="holding-metric" data-holding-category="sherry">
-          <span class="holding-metric-label">쉐리 캐스크</span>
-          <strong>${holding.sherry}<small>병</small></strong>
-          <span class="holding-metric-foot">
-            ${holding.sherryPeat ? `<span class="peat-count">피트 ${holding.sherryPeat}병</span>` : `<span></span>`}
-            <span class="holding-open-hint">목록 보기 ›</span>
-          </span>
+        <button type="button" class="holding-metric" data-holding-category="type_unclassified">
+          <span class="holding-metric-label">유형 미분류</span>
+          <strong>${holding.otherType}<small>병</small></strong>
+          <span class="holding-open-hint">목록 보기 ›</span>
         </button>
       </div>
-      <p class="holding-note">버번·쉐리를 함께 사용한 병은 두 캐스크 항목에 모두 포함됩니다. 캐스크 정보로 자동 판정된 병도 집계됩니다.</p>
+    </div>
+
+    <div class="panel holding-breakdown">
+      <div class="holding-breakdown-head">
+        <div>
+          <h3>캐스크 분류</h3>
+          <p class="muted">한 병은 한 카테고리에만 집계합니다. 쉐리와 버번을 함께 쓴 병은 ‘쉐리 + 버번’으로 분리합니다.</p>
+        </div>
+      </div>
+      <div class="holding-breakdown-grid holding-cask-grid">
+        <button type="button" class="holding-metric" data-holding-category="cask_sherry">
+          <span class="holding-metric-label">쉐리</span>
+          <strong>${holding.caskSherry}<small>병</small></strong>
+          <span class="holding-open-hint">목록 보기 ›</span>
+        </button>
+        <button type="button" class="holding-metric" data-holding-category="cask_bourbon">
+          <span class="holding-metric-label">버번</span>
+          <strong>${holding.caskBourbon}<small>병</small></strong>
+          <span class="holding-open-hint">목록 보기 ›</span>
+        </button>
+        <button type="button" class="holding-metric" data-holding-category="cask_mixed">
+          <span class="holding-metric-label">쉐리 + 버번</span>
+          <strong>${holding.caskMixed}<small>병</small></strong>
+          <span class="holding-open-hint">목록 보기 ›</span>
+        </button>
+        <button type="button" class="holding-metric" data-holding-category="cask_other">
+          <span class="holding-metric-label">기타 캐스크</span>
+          <strong>${holding.caskOther}<small>병</small></strong>
+          <span class="holding-open-hint">목록 보기 ›</span>
+        </button>
+        <button type="button" class="holding-metric" data-holding-category="cask_unclassified">
+          <span class="holding-metric-label">캐스크 미분류</span>
+          <strong>${holding.caskUnclassified}<small>병</small></strong>
+          <span class="holding-open-hint">목록 보기 ›</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel holding-breakdown peat-breakdown">
+      <div class="holding-breakdown-head">
+        <div>
+          <h3>피트</h3>
+          <p class="muted">캐스크와 별개로 관리합니다. 피트로 확인되거나 직접 표시한 병만 집계합니다.</p>
+        </div>
+      </div>
+      <div class="holding-breakdown-grid peat-grid">
+        <button type="button" class="holding-metric peat-metric" data-holding-category="peated">
+          <span class="holding-metric-label">피트 위스키</span>
+          <strong>${holding.peated}<small>병</small></strong>
+          <span class="holding-open-hint">목록 보기 ›</span>
+        </button>
+      </div>
     </div>
     <div class="stats-grid">
       <div class="panel stats-card" style="grid-column:span 2"><h3>지역별 평균 점수</h3>
