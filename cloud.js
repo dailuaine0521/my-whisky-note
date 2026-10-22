@@ -44,7 +44,7 @@ function injectCloudUI(){
         <div id="authLoggedIn" hidden>
           <p><b id="signedInEmail"></b> 계정으로 동기화 중입니다.</p>
           <div class="settings-actions">
-            <button id="syncNowBtn" class="secondary-btn">지금 동기화</button>
+            <button id="syncNowBtn" class="secondary-btn">클라우드 새로고침</button>
             <button id="pullCloudBtn" class="secondary-btn">클라우드에서 다시 불러오기</button>
             <button id="signOutBtn" class="danger-btn">로그아웃</button>
           </div>
@@ -358,37 +358,139 @@ async function pullCloud(){
   return true;
 }
 
-window.cloudQuickUpdateWhisky=async function(w){
+window.cloudSaveWhisky=async function(w,{isNew=false}={}){
   if(!cloudUser) return true;
+  setCloudStatus("저장 중…","syncing");
   const row=whiskyToDb(w);
-  const {error}=await sb.from("whiskies")
-    .update({
+
+  if(isNew){
+    const {data:saved,error}=await sb.from("whiskies")
+      .insert(row)
+      .select("id,name,status,whisky_type,cask,peated,bourbon_cask,sherry_cask,updated_at")
+      .single();
+    if(error) throw error;
+    if(!saved?.id) throw new Error("새 위스키 저장 결과를 확인하지 못했습니다.");
+  }else{
+    // Existing rows are patched field-by-field. Blank local helper fields do not
+    // overwrite verified cloud metadata unless the form explicitly carries a value.
+    const patch={
+      name:row.name,
+      name_ko:row.name_ko,
+      distillery:row.distillery,
+      country:row.country,
+      region:row.region,
+      age_years:row.age_years,
+      is_nas:row.is_nas,
+      abv:row.abv,
+      cask:row.cask,
+      market_price:row.market_price,
+      purchase_price:row.purchase_price,
+      purchase_date:row.purchase_date,
       status:row.status,
+      opened_at:row.opened_at,
       remaining_percent:row.remaining_percent,
-      bourbon_cask:row.bourbon_cask,
-      sherry_cask:row.sherry_cask,
-      peated:row.peated,
+      image_path:row.image_path,
+      bottling_type:row.bottling_type,
+      bottler:row.bottler,
+      series_name:row.series_name,
+      vintage_year:row.vintage_year,
+      bottling_year:row.bottling_year,
+      cask_number:row.cask_number,
+      single_cask:row.single_cask,
+      bottle_count:row.bottle_count,
+      cask_strength:row.cask_strength,
+      batch_release:row.batch_release,
+      image_url:row.image_url,
+      official_product_url:row.official_product_url,
+      reference_url:row.reference_url,
+      source_name:row.source_name,
       updated_at:new Date().toISOString()
-    })
-    .eq("id",w.id)
-    .eq("user_id",cloudUser.id);
-  if(error) throw error;
+    };
+    if(w.whiskyType) patch.whisky_type=row.whisky_type;
+    if(w.peated!==null && w.peated!==undefined) patch.peated=row.peated;
+    if(w.sourceCheckedAt) patch.source_checked_at=row.source_checked_at;
+
+    const {data:saved,error}=await sb.from("whiskies")
+      .update(patch)
+      .eq("id",w.id)
+      .eq("user_id",cloudUser.id)
+      .select("id,name,status,whisky_type,cask,peated,bourbon_cask,sherry_cask,updated_at")
+      .single();
+    if(error) throw error;
+    if(!saved?.id) throw new Error("위스키 수정 결과를 확인하지 못했습니다.");
+  }
+
   lastCloudSyncAt=new Date().toISOString();
   setCloudStatus("클라우드 동기화","online");
   updateLastSyncText();
   return true;
 };
 
-function scheduleCloudSync(){
-  if (!cloudUser) return;
-  clearTimeout(cloudSyncTimer);
-  cloudSyncTimer = setTimeout(pushCloud, 600);
-}
+window.cloudSaveTasting=async function(t){
+  if(!cloudUser) return true;
+  setCloudStatus("저장 중…","syncing");
+  const row=tastingToDb(t);
+  const {data:saved,error}=await sb.from("tasting_sessions")
+    .insert(row)
+    .select("id,whisky_id,whisky_name,tasting_date,overall_score,updated_at")
+    .single();
+  if(error) throw error;
+  if(!saved?.id) throw new Error("시음 저장 결과를 확인하지 못했습니다.");
 
+  lastCloudSyncAt=new Date().toISOString();
+  setCloudStatus("클라우드 동기화","online");
+  updateLastSyncText();
+  return true;
+};
+
+window.cloudQuickUpdateWhisky=async function(w,key){
+  if(!cloudUser) return true;
+
+  const row=whiskyToDb(w);
+  let patch={updated_at:new Date().toISOString()};
+  let selectCols="id,updated_at";
+
+  if(key==="complete"){
+    patch.status=row.status;
+    patch.remaining_percent=row.remaining_percent;
+    selectCols="id,status,remaining_percent,updated_at";
+  }else if(key==="sherry"){
+    patch.sherry_cask=row.sherry_cask;
+    selectCols="id,sherry_cask,updated_at";
+  }else if(key==="bourbon"){
+    patch.bourbon_cask=row.bourbon_cask;
+    selectCols="id,bourbon_cask,updated_at";
+  }else if(key==="peat"){
+    patch.peated=row.peated;
+    selectCols="id,peated,updated_at";
+  }else{
+    throw new Error("알 수 없는 빠른 변경 항목입니다.");
+  }
+
+  setCloudStatus("저장 중…","syncing");
+  const {data:saved,error}=await sb.from("whiskies")
+    .update(patch)
+    .eq("id",w.id)
+    .eq("user_id",cloudUser.id)
+    .select(selectCols)
+    .single();
+
+  if(error) throw error;
+  if(!saved?.id) throw new Error("빠른 변경 저장 결과를 확인하지 못했습니다.");
+
+  lastCloudSyncAt=new Date().toISOString();
+  setCloudStatus("클라우드 동기화","online");
+  updateLastSyncText();
+  return true;
+};
+
+// Normal UI saves are local renders only. Cloud persistence is handled by the
+// row-scoped helpers above, preventing stale local objects from overwriting
+// unrelated cloud fields.
 save = function(){
   originalSave();
-  scheduleCloudSync();
 };
+
 
 async function firstCloudHandshake(){
   if (!cloudUser) return;
@@ -713,7 +815,7 @@ document.addEventListener("click", e=>{
   if (e.target.id==="signInBtn") signIn();
   if (e.target.id==="signUpBtn") signUp();
   if (e.target.id==="signOutBtn") signOut();
-  if (e.target.id==="syncNowBtn") pushCloud();
+  if (e.target.id==="syncNowBtn") pullCloud();
   if (e.target.id==="pullCloudBtn") {
     if (confirm("현재 브라우저 데이터를 클라우드 데이터로 교체할까요?")) pullCloud();
   }
