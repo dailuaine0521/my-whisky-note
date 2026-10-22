@@ -10,7 +10,6 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, 
 let cloudUser = null;
 let cloudSyncTimer = null;
 let cloudSyncing = false;
-let cloudPulling = false;
 let lastCloudSyncAt = null;
 const originalSave = save;
 
@@ -334,8 +333,6 @@ async function pushCloud(){
 
 async function pullCloud(){
   if (!cloudUser) return false;
-  if(cloudPulling) return false;
-  cloudPulling=true;
   setCloudStatus("불러오는 중…","syncing");
   const [{data:ws,error:we},{data:ts,error:te}] = await Promise.all([
     sb.from("whiskies").select("*").order("created_at",{ascending:false}),
@@ -344,12 +341,10 @@ async function pullCloud(){
   if (we || te) {
     console.error("Cloud pull failed", we || te);
     setCloudStatus("동기화 오류","error");
-    cloudPulling=false;
     return false;
   }
   if (!ws?.length && !ts?.length) {
     setCloudStatus("클라우드 비어 있음","online");
-    cloudPulling=false;
     return false;
   }
   data = { whiskies:(ws||[]).map(dbToWhisky), tastings:(ts||[]).map(dbToTasting) };
@@ -360,16 +355,11 @@ async function pullCloud(){
   lastCloudSyncAt = new Date().toISOString();
   setCloudStatus("클라우드 동기화","online");
   updateLastSyncText();
-  cloudPulling=false;
   return true;
 }
 
 window.cloudQuickUpdateWhisky=async function(w){
   if(!cloudUser) return true;
-  // If an initial pull is still running, wait for it to finish before writing.
-  while(cloudPulling) await new Promise(resolve=>setTimeout(resolve,50));
-
-  setCloudStatus("저장 중…","syncing");
   const row=whiskyToDb(w);
   const {error}=await sb.from("whiskies")
     .update({
@@ -382,11 +372,7 @@ window.cloudQuickUpdateWhisky=async function(w){
     })
     .eq("id",w.id)
     .eq("user_id",cloudUser.id);
-
-  if(error){
-    setCloudStatus("동기화 오류","error");
-    throw error;
-  }
+  if(error) throw error;
   lastCloudSyncAt=new Date().toISOString();
   setCloudStatus("클라우드 동기화","online");
   updateLastSyncText();
