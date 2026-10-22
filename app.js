@@ -178,6 +178,8 @@ function renderDetail(){
           ${infoRow("병입 유형",w.bottlingType==="IB"?"독립병입 (IB)":w.bottlingType==="OB"?"공식병입 (OB)":"미확인")}
           ${w.bottler ? infoRow("병입사",w.bottler) : ""}
           ${infoRow("증류소",w.distillery)}
+          ${w.whiskyType ? infoRow("위스키 유형",w.whiskyType==="Single Malt"?"싱글몰트":w.whiskyType==="Blended"?"블렌디드":w.whiskyType) : ""}
+          ${w.peated!==null && w.peated!==undefined ? infoRow("피트",w.peated?"피트":"논피트") : ""}
           ${w.seriesName ? infoRow("시리즈",w.seriesName) : ""}
           ${infoRow("지역",[w.country,w.region].filter(Boolean).join(" · "))}
           ${w.vintageYear ? infoRow("빈티지",w.vintageYear) : ""}
@@ -271,7 +273,53 @@ function renderRanking(){
     <div class="r-score">${w.score}</div>
   </div>`).join("") || `<div class="empty">평가된 위스키가 없습니다.</div>`;
 }
+function normalizeWhiskyCategory(value){
+  const s=String(value||"").trim().toLowerCase();
+  if(!s) return "";
+  if(/single\s*malt|싱글\s*몰트|싱글몰트/.test(s)) return "single_malt";
+  if(/blended|블렌디드/.test(s)) return "blended";
+  return "other";
+}
+function caskBuckets(w){
+  const s=String(w?.cask||"").toLowerCase();
+  return {
+    bourbon:/bourbon|버번/.test(s),
+    sherry:/sherry|셰리|쉐리|oloroso|올로로소|(^|[^a-z])px([^a-z]|$)|pedro\s+xim/.test(s)
+  };
+}
+function isPeatedWhisky(w){
+  if(w?.peated===true) return true;
+  if(w?.peated===false) return false;
+  const notes=data.tastings
+    .filter(t=>t.whiskyId===w?.id)
+    .flatMap(t=>[
+      ...(Array.isArray(t.tags)?t.tags:[]),
+      t.noseNote,t.palateNote,t.finishNote,t.overallNote
+    ])
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return /피트|\bpeat(?:ed|y)?\b/.test(notes);
+}
+function holdingBreakdown(){
+  const held=data.whiskies.filter(w=>["보유","개봉"].includes(w.status));
+  let singleMalt=0, blended=0, otherType=0, bourbon=0, sherry=0, bourbonPeat=0, sherryPeat=0;
+  held.forEach(w=>{
+    const type=normalizeWhiskyCategory(w.whiskyType);
+    if(type==="single_malt") singleMalt++;
+    else if(type==="blended") blended++;
+    else otherType++;
+
+    const cask=caskBuckets(w);
+    const peated=isPeatedWhisky(w);
+    if(cask.bourbon){ bourbon++; if(peated) bourbonPeat++; }
+    if(cask.sherry){ sherry++; if(peated) sherryPeat++; }
+  });
+  return {total:held.length,singleMalt,blended,otherType,bourbon,sherry,bourbonPeat,sherryPeat};
+}
+
 function renderStats(){
+  const holding=holdingBreakdown();
   const scored=data.whiskies.map(w=>({w,score:whiskyScore(w.id)})).filter(x=>x.score!==null);
   const byRegion={};
   scored.forEach(({w,score})=>{const k=w.region||w.country||"기타"; if(!byRegion[k])byRegion[k]=[]; byRegion[k].push(score)});
@@ -286,6 +334,36 @@ function renderStats(){
       <div class="stat-card"><div class="stat-label">총 구매금액</div><div class="stat-value">${new Intl.NumberFormat("ko-KR",{notation:"compact"}).format(spend)}<small>원</small></div></div>
       <div class="stat-card"><div class="stat-label">시음 기록</div><div class="stat-value">${data.tastings.length}<small>회</small></div></div>
       <div class="stat-card"><div class="stat-label">등록 위스키</div><div class="stat-value">${data.whiskies.length}<small>병</small></div></div>
+    </div>
+    <div class="panel holding-breakdown">
+      <div class="holding-breakdown-head">
+        <div>
+          <h3>보유 구성</h3>
+          <p class="muted">현재 보유 · 개봉 ${holding.total}병 기준</p>
+        </div>
+        ${holding.otherType ? `<span class="holding-unclassified">유형 미분류 ${holding.otherType}병</span>` : ""}
+      </div>
+      <div class="holding-breakdown-grid">
+        <div class="holding-metric">
+          <span class="holding-metric-label">싱글몰트</span>
+          <strong>${holding.singleMalt}<small>병</small></strong>
+        </div>
+        <div class="holding-metric">
+          <span class="holding-metric-label">블렌디드</span>
+          <strong>${holding.blended}<small>병</small></strong>
+        </div>
+        <div class="holding-metric">
+          <span class="holding-metric-label">버번 캐스크</span>
+          <strong>${holding.bourbon}<small>병</small></strong>
+          ${holding.bourbonPeat ? `<span class="peat-count">피트 ${holding.bourbonPeat}병</span>` : ""}
+        </div>
+        <div class="holding-metric">
+          <span class="holding-metric-label">쉐리 캐스크</span>
+          <strong>${holding.sherry}<small>병</small></strong>
+          ${holding.sherryPeat ? `<span class="peat-count">피트 ${holding.sherryPeat}병</span>` : ""}
+        </div>
+      </div>
+      <p class="holding-note">버번·쉐리를 함께 사용한 병은 두 캐스크 항목에 모두 포함됩니다.</p>
     </div>
     <div class="stats-grid">
       <div class="panel stats-card" style="grid-column:span 2"><h3>지역별 평균 점수</h3>
@@ -348,6 +426,8 @@ function openWhiskyModal(editId=null){
     const values={
       name:existing.name||"", nameKo:existing.nameKo||"", distillery:existing.distillery||"",
       country:existing.country||"", region:existing.region||"", age:existing.age||"",
+      whiskyType:existing.whiskyType||"",
+      peated:existing.peated===true?"true":existing.peated===false?"false":"",
       abv:existing.abv??"", cask:existing.cask||"", marketPrice:existing.marketPrice??"",
       purchasePrice:existing.purchasePrice??"", purchaseDate:existing.purchaseDate||"",
       status:existing.status||"보유", openedAt:existing.openedAt||"",
@@ -419,6 +499,8 @@ function openWhiskyModal(editId=null){
         name:String(f.get("name")||"").trim(), nameKo:String(f.get("nameKo")||"").trim(),
         distillery:String(f.get("distillery")||"").trim(), country:String(f.get("country")||"").trim(),
         region:String(f.get("region")||"").trim(), age:String(f.get("age")||"").trim(),
+        whiskyType:String(f.get("whiskyType")||"").trim(),
+        peated:f.get("peated")===""?null:f.get("peated")==="true",
         abv:Number(f.get("abv"))||null, cask:String(f.get("cask")||"").trim(),
         marketPrice:Number(f.get("marketPrice"))||null,
         purchasePrice:Number(f.get("purchasePrice"))||null,
