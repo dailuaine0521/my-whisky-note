@@ -130,7 +130,7 @@ function renderGrid(){
   $("#whiskyGrid").innerHTML = arr.length ? arr.map(cardHTML).join("") : `<div class="empty">검색 결과가 없습니다.</div>`;
 }
 function infoRow(label,value){return `<div class="info-row"><span>${label}</span><span>${value||"-"}</span></div>`}
-async async function quickToggleWhisky(id,key){
+async function quickToggleWhisky(id,key){
   const w=data.whiskies.find(x=>x.id===id);
   if(!w) return;
 
