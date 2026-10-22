@@ -318,6 +318,66 @@ function holdingBreakdown(){
   return {total:held.length,singleMalt,blended,otherType,bourbon,sherry,bourbonPeat,sherryPeat};
 }
 
+function holdingCategoryItems(category){
+  const held=data.whiskies.filter(w=>["보유","개봉"].includes(w.status));
+  if(category==="single_malt") return held.filter(w=>normalizeWhiskyCategory(w.whiskyType)==="single_malt");
+  if(category==="blended") return held.filter(w=>normalizeWhiskyCategory(w.whiskyType)==="blended");
+  if(category==="unclassified") return held.filter(w=>!["single_malt","blended"].includes(normalizeWhiskyCategory(w.whiskyType)));
+  if(category==="bourbon") return held.filter(w=>caskBuckets(w).bourbon);
+  if(category==="sherry") return held.filter(w=>caskBuckets(w).sherry);
+  return [];
+}
+
+function holdingCategoryLabel(category){
+  return ({
+    single_malt:"싱글몰트",
+    blended:"블렌디드",
+    unclassified:"유형 미분류",
+    bourbon:"버번 캐스크",
+    sherry:"쉐리 캐스크"
+  })[category] || "보유 구성";
+}
+
+function openHoldingCategory(category){
+  const items=holdingCategoryItems(category);
+  const title=holdingCategoryLabel(category);
+  modalContent.innerHTML=`
+    <div class="modal-head">
+      <div><div class="eyebrow">HOLDINGS</div><h2>${title}</h2></div>
+      <button type="button" class="icon-btn" data-close>✕</button>
+    </div>
+    <div class="holding-list-summary">현재 보유 · 개봉 기준 <b>${items.length}병</b></div>
+    <div class="holding-drill-list">
+      ${items.length ? items.map(w=>{
+        const cask=caskBuckets(w);
+        const peated=isPeatedWhisky(w);
+        const type=normalizeWhiskyCategory(w.whiskyType);
+        const typeLabel=type==="single_malt"?"싱글몰트":type==="blended"?"블렌디드":"미분류";
+        return `<button type="button" class="holding-drill-item" data-holding-whisky="${w.id}">
+          <span class="holding-drill-main">
+            <b>${w.name}</b>
+            ${w.nameKo?`<small>${w.nameKo}</small>`:""}
+          </span>
+          <span class="holding-drill-meta">
+            <span>${typeLabel}</span>
+            ${w.cask?`<span>${w.cask}</span>`:""}
+            ${peated?`<span class="peat-count">피트</span>`:""}
+            ${cask.bourbon&&cask.sherry?`<span class="dual-cask-badge">버번 + 쉐리</span>`:""}
+          </span>
+        </button>`;
+      }).join("") : `<div class="empty">해당 항목의 위스키가 없습니다.</div>`}
+    </div>`;
+  modalBackdrop.classList.add("open");
+  modalContent.querySelectorAll("[data-holding-whisky]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      selectedWhiskyId=btn.dataset.holdingWhisky;
+      closeModal();
+      setView("home");
+      renderGrid();
+      renderDetail();
+    });
+  });
+}
 function renderStats(){
   const holding=holdingBreakdown();
   const scored=data.whiskies.map(w=>({w,score:whiskyScore(w.id)})).filter(x=>x.score!==null);
@@ -339,29 +399,37 @@ function renderStats(){
       <div class="holding-breakdown-head">
         <div>
           <h3>보유 구성</h3>
-          <p class="muted">현재 보유 · 개봉 ${holding.total}병 기준</p>
+          <p class="muted">현재 보유 · 개봉 ${holding.total}병 기준 · 카드를 누르면 병 목록을 볼 수 있습니다.</p>
         </div>
-        ${holding.otherType ? `<span class="holding-unclassified">유형 미분류 ${holding.otherType}병</span>` : ""}
+        ${holding.otherType ? `<button type="button" class="holding-unclassified" data-holding-category="unclassified">유형 미분류 ${holding.otherType}병</button>` : ""}
       </div>
       <div class="holding-breakdown-grid">
-        <div class="holding-metric">
+        <button type="button" class="holding-metric" data-holding-category="single_malt">
           <span class="holding-metric-label">싱글몰트</span>
           <strong>${holding.singleMalt}<small>병</small></strong>
-        </div>
-        <div class="holding-metric">
+          <span class="holding-open-hint">목록 보기 ›</span>
+        </button>
+        <button type="button" class="holding-metric" data-holding-category="blended">
           <span class="holding-metric-label">블렌디드</span>
           <strong>${holding.blended}<small>병</small></strong>
-        </div>
-        <div class="holding-metric">
+          <span class="holding-open-hint">목록 보기 ›</span>
+        </button>
+        <button type="button" class="holding-metric" data-holding-category="bourbon">
           <span class="holding-metric-label">버번 캐스크</span>
           <strong>${holding.bourbon}<small>병</small></strong>
-          ${holding.bourbonPeat ? `<span class="peat-count">피트 ${holding.bourbonPeat}병</span>` : ""}
-        </div>
-        <div class="holding-metric">
+          <span class="holding-metric-foot">
+            ${holding.bourbonPeat ? `<span class="peat-count">피트 ${holding.bourbonPeat}병</span>` : `<span></span>`}
+            <span class="holding-open-hint">목록 보기 ›</span>
+          </span>
+        </button>
+        <button type="button" class="holding-metric" data-holding-category="sherry">
           <span class="holding-metric-label">쉐리 캐스크</span>
           <strong>${holding.sherry}<small>병</small></strong>
-          ${holding.sherryPeat ? `<span class="peat-count">피트 ${holding.sherryPeat}병</span>` : ""}
-        </div>
+          <span class="holding-metric-foot">
+            ${holding.sherryPeat ? `<span class="peat-count">피트 ${holding.sherryPeat}병</span>` : `<span></span>`}
+            <span class="holding-open-hint">목록 보기 ›</span>
+          </span>
+        </button>
       </div>
       <p class="holding-note">버번·쉐리를 함께 사용한 병은 두 캐스크 항목에 모두 포함됩니다.</p>
     </div>
@@ -376,6 +444,9 @@ function renderStats(){
         ${tasteProfile().map(x=>`<div class="top-row"><span>${x.tag}</span><b>평균 ${x.avg} · ${x.count}회</b></div>`).join("")||"<div class='empty'>같은 태그를 2회 이상 기록하면 취향이 나타납니다.</div>"}
       </div>
     </div>`;
+  document.querySelectorAll("[data-holding-category]").forEach(el=>{
+    el.addEventListener("click",()=>openHoldingCategory(el.dataset.holdingCategory));
+  });
 }
 
 function renderAll(){
