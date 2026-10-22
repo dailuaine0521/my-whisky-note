@@ -527,3 +527,51 @@ button.holding-unclassified:hover{background:#eadfce}
   .holding-drill-item{align-items:flex-start;flex-direction:column}
   .holding-drill-meta{max-width:100%;justify-content:flex-start}
 }
+
+
+.detail-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.quick-whisky-actions,
+.detail-manage-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.quick-tag-btn{
+  border:1px solid #d8c9b7;
+  border-radius:999px;
+  background:#fffaf3;
+  color:#786654;
+  padding:7px 11px;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease;
+}
+.quick-tag-btn:hover{
+  transform:translateY(-1px);
+  border-color:#c9a56f;
+}
+.quick-tag-btn.active{
+  background:#3a2a20;
+  border-color:#3a2a20;
+  color:#f5e2c4;
+}
+.quick-tag-btn.active.peat{
+  background:#2d2a27;
+  border-color:#2d2a27;
+}
+.quick-tag-btn.active.complete{
+  background:#7a4f43;
+  border-color:#7a4f43;
+}
+@media(max-width:620px){
+  .detail-actions{align-items:flex-start}
+  .quick-whisky-actions{width:100%}
+}
