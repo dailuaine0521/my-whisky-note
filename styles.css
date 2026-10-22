@@ -575,3 +575,42 @@ button.holding-unclassified:hover{background:#eadfce}
   .detail-actions{align-items:flex-start}
   .quick-whisky-actions{width:100%}
 }
+
+
+/* Clear, non-overlapping collection classification */
+.holding-type-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.holding-cask-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.peat-grid{grid-template-columns:minmax(0,260px)}
+.peat-breakdown{margin-top:12px}
+.peat-metric{min-height:96px}
+.quick-action-group{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding-right:10px;
+  margin-right:4px;
+  border-right:1px solid var(--line);
+}
+.quick-action-group:last-child{border-right:0;padding-right:0;margin-right:0}
+.quick-action-label{
+  color:#9a856f;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.quick-tag-btn.inferred{
+  border-style:dashed;
+}
+@media(max-width:900px){
+  .holding-cask-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .holding-type-grid,.holding-cask-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .peat-grid{grid-template-columns:1fr}
+  .quick-action-group{
+    width:auto;
+    border-right:0;
+    padding-right:0;
+    margin-right:0;
+  }
+}
