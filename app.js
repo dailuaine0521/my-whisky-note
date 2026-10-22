@@ -172,7 +172,7 @@ async async function quickToggleWhisky(id,key){
 
   if(typeof window.cloudQuickUpdateWhisky==="function"){
     try{
-      await window.cloudQuickUpdateWhisky(w);
+      await window.cloudQuickUpdateWhisky(w,key);
       const current=data.whiskies.find(x=>x.id===id);
       if(current){
         current.status=w.status;
@@ -739,11 +739,16 @@ function openWhiskyModal(editId=null){
         sourceCheckedAt:existing?.sourceCheckedAt||"",
         visual:existing?.visual||"amber"
       };
+      if(typeof window.cloudSaveWhisky==="function"){
+        await window.cloudSaveWhisky(w,{isNew:!existing});
+      }
       if(existing){
         const idx=data.whiskies.findIndex(x=>x.id===existing.id);
         data.whiskies[idx]=w;
       }else data.whiskies.unshift(w);
-      selectedWhiskyId=w.id; save(); closeModal();
+      selectedWhiskyId=w.id;
+      save();
+      closeModal();
     }catch(err){
       alert("저장 실패: "+(err?.message||err));
     }finally{submit.disabled=false;}
@@ -852,7 +857,7 @@ function openTastingModal(preselect=selectedWhiskyId){
   const range=$("#overallRange"), preview=$("#overallPreview");
   range.addEventListener("input",()=>preview.textContent=range.value);
 
-  form.addEventListener("submit",e=>{
+  form.addEventListener("submit",async e=>{
     e.preventDefault();
     const f=new FormData(form);
     const manual=!manualWrap.hidden;
@@ -874,7 +879,17 @@ function openTastingModal(preselect=selectedWhiskyId){
       overallNote:String(f.get("overallNote")||"").trim(),
       tags:String(f.get("tags")||"").split(",").map(x=>x.trim()).filter(Boolean)
     };
-    data.tastings.unshift(t); save(); closeModal(); setView("tasting");
+    try{
+      if(typeof window.cloudSaveTasting==="function"){
+        await window.cloudSaveTasting(t);
+      }
+      data.tastings.unshift(t);
+      save();
+      closeModal();
+      setView("tasting");
+    }catch(err){
+      alert("시음 저장 실패: "+(err?.message||err));
+    }
   });
 }
 $("#openAddTasting").addEventListener("click",()=>openTastingModal());
