@@ -465,7 +465,7 @@ function holdingCategoryLabel(category){
   return ({
     single_malt:"싱글몰트",
     blended:"블렌디드",
-    type_unclassified:"위스키 유형 미분류",
+    type_unclassified:"유형 미분류",
     cask_sherry:"쉐리 캐스크",
     cask_bourbon:"버번 캐스크",
     cask_mixed:"쉐리 + 버번 캐스크",
@@ -532,32 +532,6 @@ function renderStats(){
       <div class="stat-card"><div class="stat-label">시음 기록</div><div class="stat-value">${data.tastings.length}<small>회</small></div></div>
       <div class="stat-card"><div class="stat-label">등록 위스키</div><div class="stat-value">${data.whiskies.length}<small>병</small></div></div>
     </div>
-    <div class="panel holding-breakdown">
-      <div class="holding-breakdown-head">
-        <div>
-          <h3>위스키 유형</h3>
-          <p class="muted">현재 보유 · 개봉 ${holding.total}병 기준</p>
-        </div>
-      </div>
-      <div class="holding-breakdown-grid holding-type-grid">
-        <button type="button" class="holding-metric" data-holding-category="single_malt">
-          <span class="holding-metric-label">싱글몰트</span>
-          <strong>${holding.singleMalt}<small>병</small></strong>
-          <span class="holding-open-hint">목록 보기 ›</span>
-        </button>
-        <button type="button" class="holding-metric" data-holding-category="blended">
-          <span class="holding-metric-label">블렌디드</span>
-          <strong>${holding.blended}<small>병</small></strong>
-          <span class="holding-open-hint">목록 보기 ›</span>
-        </button>
-        <button type="button" class="holding-metric" data-holding-category="type_unclassified">
-          <span class="holding-metric-label">유형 미분류</span>
-          <strong>${holding.otherType}<small>병</small></strong>
-          <span class="holding-open-hint">목록 보기 ›</span>
-        </button>
-      </div>
-    </div>
-
     <div class="panel holding-breakdown">
       <div class="holding-breakdown-head">
         <div>
