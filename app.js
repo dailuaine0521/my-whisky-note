@@ -158,18 +158,13 @@ async function quickToggleWhisky(id,key){
     w.peated=!isPeatedWhisky(w);
   }
 
-  // Reflect immediately in the UI.
+  // Update the current UI immediately without changing the global render/navigation flow.
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   renderAll();
 
-  // Persist the one changed bottle immediately when cloud is connected.
   if(typeof window.cloudQuickUpdateWhisky==="function"){
     try{
       await window.cloudQuickUpdateWhisky(w);
-
-      // An initial cloud pull may have replaced the local data object while
-      // this quick update was waiting. Re-apply the saved quick fields to the
-      // currently active copy so the button state stays visually consistent.
       const current=data.whiskies.find(x=>x.id===id);
       if(current){
         current.status=w.status;
@@ -538,14 +533,6 @@ $$("[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.vi
 $$("[data-view-target]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.viewTarget)));
 
 document.addEventListener("click",e=>{
-  const quickBtn=e.target.closest("[data-quick-whisky]");
-  if(quickBtn){
-    e.preventDefault();
-    e.stopPropagation();
-    quickToggleWhisky(selectedWhiskyId,quickBtn.dataset.quickWhisky);
-    return;
-  }
-
   const card=e.target.closest("[data-whisky]");
   if(card){
     selectedWhiskyId=card.dataset.whisky;
