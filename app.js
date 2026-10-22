@@ -67,7 +67,7 @@ function suggestedTastingTags(){
   return [...BASE_TASTING_TAGS,...learned];
 }
 function whiskyTastingTrend(id){
-  return data.tastings.filter(t=>t.whiskyId===id).sort((a,b)=>a.date.localeCompare(b.date));
+  return data.tastings.filter(t=>t.whiskyId===id).sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")));
 }
 function tasteProfile(){
   const stats={};
@@ -293,7 +293,7 @@ function renderDetail(){
   });
 }
 function renderRecent(){
-  const arr = [...data.tastings].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,2);
+  const arr = [...data.tastings].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,2);
   $("#recentNotes").innerHTML = arr.map(t=>{
     const w=data.whiskies.find(x=>x.id===t.whiskyId);
     return `<div class="note-mini"><div class="note-mini-top"><span>${t.date} · ${w?.name||t.whiskyName||"Unknown"}</span><b>★ ${t.overall}</b></div><p>${t.overallNote||"-"}</p></div>`
@@ -309,7 +309,7 @@ function renderCollection(){
   $("#collectionGrid").innerHTML = arr.length?arr.map(cardHTML).join(""):`<div class="empty">해당 상태의 위스키가 없습니다.</div>`;
 }
 function renderTastings(){
-  const arr=[...data.tastings].sort((a,b)=>b.date.localeCompare(a.date));
+  const arr=[...data.tastings].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
   $("#tastingList").innerHTML=arr.map(t=>{
     const w=data.whiskies.find(x=>x.id===t.whiskyId);
     return `<article class="tasting-card">
@@ -519,20 +519,79 @@ function renderStats(){
   });
 }
 
+function safeRenderSection(name,fn,fallbackId=""){
+  try{
+    fn();
+    return true;
+  }catch(err){
+    console.error("Render failed:",name,err);
+    if(fallbackId){
+      const el=document.getElementById(fallbackId);
+      if(el && !el.innerHTML.trim()){
+        el.innerHTML='<div class="empty">화면을 불러오는 중 문제가 발생했습니다. 새로고침 후 다시 시도해 주세요.</div>';
+      }
+    }
+    return false;
+  }
+}
+
 function renderAll(){
-  renderSummary();renderGrid();renderDetail();renderRecent();renderTopFive();renderCollection();renderTastings();renderWishlist();renderRanking();renderStats();
+  safeRenderSection("summary",renderSummary,"summaryCards");
+  safeRenderSection("home grid",renderGrid,"whiskyGrid");
+  safeRenderSection("detail",renderDetail,"detailPanel");
+  safeRenderSection("recent",renderRecent,"recentNotes");
+  safeRenderSection("top five",renderTopFive,"topFive");
+  safeRenderSection("collection",renderCollection,"collectionGrid");
+  safeRenderSection("tastings",renderTastings,"tastingList");
+  safeRenderSection("wishlist",renderWishlist,"wishlistGrid");
+  safeRenderSection("ranking",renderRanking,"rankingList");
+  safeRenderSection("stats",renderStats,"statsContent");
+}
+
+function renderViewContent(name){
+  if(name==="home"){
+    safeRenderSection("summary",renderSummary,"summaryCards");
+    safeRenderSection("home grid",renderGrid,"whiskyGrid");
+    safeRenderSection("detail",renderDetail,"detailPanel");
+    safeRenderSection("recent",renderRecent,"recentNotes");
+    safeRenderSection("top five",renderTopFive,"topFive");
+  }else if(name==="collection"){
+    safeRenderSection("collection",renderCollection,"collectionGrid");
+  }else if(name==="tasting"){
+    safeRenderSection("tastings",renderTastings,"tastingList");
+  }else if(name==="wishlist"){
+    safeRenderSection("wishlist",renderWishlist,"wishlistGrid");
+  }else if(name==="ranking"){
+    safeRenderSection("ranking",renderRanking,"rankingList");
+  }else if(name==="stats"){
+    safeRenderSection("stats",renderStats,"statsContent");
+  }
 }
 
 function setView(name){
   $$(".view").forEach(v=>v.classList.remove("active"));
   $("#"+name+"View")?.classList.add("active");
   $$(".nav-item[data-view], .mobile-nav button[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===name));
+  renderViewContent(name);
   window.scrollTo({top:0,behavior:"smooth"});
 }
-$$("[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
-$$("[data-view-target]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.viewTarget)));
+
 
 document.addEventListener("click",e=>{
+  const viewBtn=e.target.closest("[data-view]");
+  if(viewBtn){
+    e.preventDefault();
+    setView(viewBtn.dataset.view);
+    return;
+  }
+
+  const viewTarget=e.target.closest("[data-view-target]");
+  if(viewTarget){
+    e.preventDefault();
+    setView(viewTarget.dataset.viewTarget);
+    return;
+  }
+
   const card=e.target.closest("[data-whisky]");
   if(card){
     selectedWhiskyId=card.dataset.whisky;
