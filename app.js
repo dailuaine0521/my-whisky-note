@@ -130,6 +130,32 @@ function renderGrid(){
   $("#whiskyGrid").innerHTML = arr.length ? arr.map(cardHTML).join("") : `<div class="empty">검색 결과가 없습니다.</div>`;
 }
 function infoRow(label,value){return `<div class="info-row"><span>${label}</span><span>${value||"-"}</span></div>`}
+function quickToggleWhisky(id,key){
+  const w=data.whiskies.find(x=>x.id===id);
+  if(!w) return;
+
+  if(key==="complete"){
+    if(w.status==="완병"){
+      w.status=w.openedAt?"개봉":"보유";
+      if(w.remainingPercent===0) w.remainingPercent=null;
+    }else{
+      w.status="완병";
+      w.remainingPercent=0;
+    }
+  }else if(key==="sherry"){
+    const current=caskBuckets(w).sherry;
+    w.sherryCask=!current;
+  }else if(key==="bourbon"){
+    const current=caskBuckets(w).bourbon;
+    w.bourbonCask=!current;
+  }else if(key==="peat"){
+    const current=isPeatedWhisky(w);
+    w.peated=!current;
+  }
+
+  save();
+}
+
 function renderDetail(){
   const w = data.whiskies.find(x=>x.id===selectedWhiskyId) || data.whiskies[0];
   if(!w){$("#detailPanel").innerHTML=`<div class="empty">위스키를 추가해 주세요.</div>`;return}
@@ -171,8 +197,16 @@ function renderDetail(){
         </div>
         <div class="pills"><span class="pill">${w.status}</span><span class="pill gold">${w.age||"미확인"}</span>${w.bottlingType&&w.bottlingType!=="unknown"?`<span class="pill ${w.bottlingType==="IB"?"ib-pill":"gold"}">${w.bottlingType}</span>`:""}${w.remainingPercent!==null&&w.remainingPercent!==undefined?`<span class="pill">잔량 ${w.remainingPercent}%</span>`:""}</div>
         <div class="detail-actions">
-          <button class="secondary-btn" id="editWhiskyBtn">수정</button>
-          <button class="danger-btn" id="deleteWhiskyBtn">삭제</button>
+          <div class="quick-whisky-actions" aria-label="빠른 분류">
+            <button type="button" class="quick-tag-btn ${w.status==="완병"?"active complete":""}" data-quick-whisky="complete">완병</button>
+            <button type="button" class="quick-tag-btn ${caskBuckets(w).sherry?"active":""}" data-quick-whisky="sherry">쉐리</button>
+            <button type="button" class="quick-tag-btn ${caskBuckets(w).bourbon?"active":""}" data-quick-whisky="bourbon">버번</button>
+            <button type="button" class="quick-tag-btn ${isPeatedWhisky(w)?"active peat":""}" data-quick-whisky="peat">피트</button>
+          </div>
+          <div class="detail-manage-actions">
+            <button class="secondary-btn" id="editWhiskyBtn">수정</button>
+            <button class="danger-btn" id="deleteWhiskyBtn">삭제</button>
+          </div>
         </div>
         <div class="info-table">
           ${infoRow("병입 유형",w.bottlingType==="IB"?"독립병입 (IB)":w.bottlingType==="OB"?"공식병입 (OB)":"미확인")}
@@ -210,6 +244,9 @@ function renderDetail(){
     </div>
     ${trendHtml}`;
   $("#quickTasting")?.addEventListener("click",()=>openTastingModal(w.id));
+  $(".quick-tag-btn[data-quick-whisky]",$("#detailPanel")).forEach(btn=>{
+    btn.addEventListener("click",()=>quickToggleWhisky(w.id,btn.dataset.quickWhisky));
+  });
   $("#editWhiskyBtn")?.addEventListener("click",()=>openWhiskyModal(w.id));
   $("#deleteWhiskyBtn")?.addEventListener("click",async()=>{
     const ok=confirm(`"${w.name}"을 컬렉션에서 삭제할까요?\n기존 시음 기록은 위스키 이름을 남긴 채 보존됩니다.`);
@@ -282,9 +319,11 @@ function normalizeWhiskyCategory(value){
 }
 function caskBuckets(w){
   const s=String(w?.cask||"").toLowerCase();
+  const inferredBourbon=/bourbon|버번/.test(s);
+  const inferredSherry=/sherry|셰리|쉐리|oloroso|올로로소|(^|[^a-z])px([^a-z]|$)|pedro\s+xim/.test(s);
   return {
-    bourbon:/bourbon|버번/.test(s),
-    sherry:/sherry|셰리|쉐리|oloroso|올로로소|(^|[^a-z])px([^a-z]|$)|pedro\s+xim/.test(s)
+    bourbon:w?.bourbonCask===null||w?.bourbonCask===undefined ? inferredBourbon : !!w.bourbonCask,
+    sherry:w?.sherryCask===null||w?.sherryCask===undefined ? inferredSherry : !!w.sherryCask
   };
 }
 function isPeatedWhisky(w){
@@ -572,6 +611,8 @@ function openWhiskyModal(editId=null){
         region:String(f.get("region")||"").trim(), age:String(f.get("age")||"").trim(),
         whiskyType:String(f.get("whiskyType")||"").trim(),
         peated:f.get("peated")===""?null:f.get("peated")==="true",
+        bourbonCask:existing?.bourbonCask ?? null,
+        sherryCask:existing?.sherryCask ?? null,
         abv:Number(f.get("abv"))||null, cask:String(f.get("cask")||"").trim(),
         marketPrice:Number(f.get("marketPrice"))||null,
         purchasePrice:Number(f.get("purchasePrice"))||null,
