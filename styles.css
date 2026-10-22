@@ -488,3 +488,42 @@ button{cursor:pointer}
   .holding-breakdown-head{display:block}
   .holding-unclassified{display:inline-block;margin-top:8px}
 }
+
+.holding-metric{
+  appearance:none;
+  width:100%;
+  text-align:left;
+  cursor:pointer;
+  font:inherit;
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.holding-metric:hover{
+  transform:translateY(-2px);
+  border-color:#cfb58f;
+  box-shadow:0 8px 22px rgba(70,48,30,.08);
+}
+.holding-metric:focus-visible,.holding-unclassified:focus-visible,.holding-drill-item:focus-visible{
+  outline:2px solid #c8964a;
+  outline-offset:2px;
+}
+.holding-open-hint{color:#a17e50;font-size:10px;font-weight:700}
+.holding-metric-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+button.holding-unclassified{border:0;cursor:pointer}
+button.holding-unclassified:hover{background:#eadfce}
+.holding-list-summary{margin:-2px 0 14px;color:#8c7864;font-size:12px}
+.holding-drill-list{display:flex;flex-direction:column;gap:8px;max-height:min(62vh,560px);overflow:auto;padding-right:3px}
+.holding-drill-item{
+  width:100%;border:1px solid var(--line);border-radius:12px;background:#fffdf9;padding:13px 14px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;cursor:pointer;
+}
+.holding-drill-item:hover{background:#fbf3e8;border-color:#d5bd98}
+.holding-drill-main{min-width:0;display:flex;flex-direction:column;gap:3px}
+.holding-drill-main b{color:#34271d;font-size:13px}
+.holding-drill-main small{color:#8d7965;font-size:11px}
+.holding-drill-meta{flex:0 0 auto;max-width:52%;display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.holding-drill-meta>span:not(.peat-count):not(.dual-cask-badge){padding:4px 7px;border-radius:999px;background:#f2ece4;color:#6e5d4c;font-size:10px;font-weight:700}
+.dual-cask-badge{padding:4px 7px;border-radius:999px;background:#efe0c9;color:#815b29;font-size:10px;font-weight:700}
+@media(max-width:620px){
+  .holding-drill-item{align-items:flex-start;flex-direction:column}
+  .holding-drill-meta{max-width:100%;justify-content:flex-start}
+}
