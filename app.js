@@ -275,7 +275,7 @@ function renderDetail(){
     </div>
     ${trendHtml}`;
   $("#quickTasting")?.addEventListener("click",()=>openTastingModal(w.id));
-  $(".quick-tag-btn[data-quick-whisky]",$("#detailPanel")).forEach(btn=>{
+  document.querySelectorAll("#detailPanel .quick-tag-btn[data-quick-whisky]").forEach(btn=>{
     btn.addEventListener("click",()=>quickToggleWhisky(w.id,btn.dataset.quickWhisky));
   });
   $("#editWhiskyBtn")?.addEventListener("click",()=>openWhiskyModal(w.id));
